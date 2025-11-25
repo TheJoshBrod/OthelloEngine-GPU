@@ -5,17 +5,19 @@
 
 using namespace std;
 
+
 class Othello {
 private:
     static const int SIZE = 8;
     vector<vector<char>> board;
+    int human_players;
     char currentPlayer;
     
     const int dx[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
     const int dy[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
     
 public:
-    Othello() : board(SIZE, vector<char>(SIZE, ' ')), currentPlayer('X') {
+    Othello(int num_players) : board(SIZE, vector<char>(SIZE, ' ')), currentPlayer('X'), human_players(num_players) {
         // Initialize starting position
         board[3][3] = 'O';
         board[3][4] = 'X';
@@ -99,7 +101,7 @@ public:
         return false;
     }
     
-    void showValidMoves(char player) {
+    void printValidMoves(char player) {
         cout << "\nValid moves for player " << player << ": ";
         bool found = false;
         for (int i = 0; i < SIZE; i++) {
@@ -114,6 +116,19 @@ public:
         cout << "\n";
     }
     
+    vector<pair<int, int>> retrieveValidMoves(char player) {
+        vector<pair<int, int>> moves;
+        bool found = false;
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                if (isValidMove(i, j, player)) {
+                    moves.push_back({i,j});
+                }
+            }
+        }
+        return moves;
+    }
+    
     pair<int, int> getScore() {
         int x = 0, o = 0;
         for (int i = 0; i < SIZE; i++) {
@@ -125,6 +140,34 @@ public:
         return {x, o};
     }
     
+    void human_turn(){
+        while (true){
+            int row, col;
+            if (!(cin >> row >> col)) {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Invalid input. Please enter two numbers.\n";
+            }
+
+            bool valid_move = isValidMove(row, col, currentPlayer);
+            if (valid_move) {
+                flipPieces(row, col, currentPlayer);
+                currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+                return;
+            } 
+            else {
+                cout << "Invalid move! Try again.\n";
+            }
+
+            displayBoard();
+        }
+    }
+
+    void computer_turn(){
+        vector<pair<int,int>> moves = retrieveValidMoves(currentPlayer);
+        flipPieces(moves[0].first, moves[1].second, currentPlayer);
+    }
+
     void play() {
         cout << "=== OTHELLO GAME ===\n";
         cout << "Player X: You\nPlayer O: Opponent\n";
@@ -151,29 +194,38 @@ public:
                 continue;
             }
             
-            showValidMoves(currentPlayer);
+            printValidMoves(currentPlayer);
             cout << "Player " << currentPlayer << "'s turn. Enter move: ";
             
-            int row, col;
-            if (!(cin >> row >> col)) {
-                cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cout << "Invalid input. Please enter two numbers.\n";
-                continue;
+            if (human_players == 2){
+                human_turn();
             }
-            
-            if (isValidMove(row, col, currentPlayer)) {
-                flipPieces(row, col, currentPlayer);
-                currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
-            } else {
-                cout << "Invalid move! Try again.\n";
+            else if (human_players == 1){
+                if (currentPlayer == 'X')
+                    human_turn();
+                else
+                    computer_turn();
+            }
+            else{
+                computer_turn();
             }
         }
     }
 };
 
-int main() {
-    Othello game;
+int main(int argc, char* argv[]) {
+    
+    // Handles args to determine number of players/computers
+    int num_players = 1;
+    if (argc >= 2){
+        num_players = std::stoi(argv[1]);
+        if (num_players < 0 || num_players > 2){
+            cout << "Must have between 0-2 human players\n";
+            return;
+        }
+    }
+
+    Othello game(num_players);
     game.play();
     return 0;
 }
