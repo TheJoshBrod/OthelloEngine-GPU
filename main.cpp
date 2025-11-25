@@ -1,10 +1,6 @@
 #include <iostream>
-#include <vector>
 #include <string>
-
-
 #include "othello.h"
-#include "serial.h"
 
 using namespace std;
 

@@ -1,7 +1,13 @@
 #include "othello.h"
+#include <string>
+#include <limits>
+#include <ios>
 using namespace std;
 
-// ---- Constructor ----
+// ************************
+// Constructor Functions
+// ************************
+
 Othello::Othello(int num_players)
     : board(SIZE, vector<char>(SIZE, ' ')), currentPlayer('X'), human_players(num_players)
 {
@@ -13,7 +19,7 @@ Othello::Othello(int num_players)
 
 
 // ************************
-// Helper Functions
+// Display / UI helpers
 // ************************
 
 void Othello::displayBoard() {
@@ -27,6 +33,24 @@ void Othello::displayBoard() {
         cout << "\n  ----------------\n";
     }
 }
+
+void Othello::printValidMoves(char player) {
+    cout << "\nValid moves for player " << player << ": ";
+    bool found = false;
+    for (int i = 0; i < SIZE; i++)
+        for (int j = 0; j < SIZE; j++)
+            if (isValidMove(i, j, player)) {
+                cout << "(" << i << "," << j << ") ";
+                found = true;
+            }
+    if (!found) cout << "None";
+    cout << "\n";
+}
+
+
+// ************************
+// Core game logic
+// ************************
 
 bool Othello::isValidMove(int row, int col, char player) {
     if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return false;
@@ -79,18 +103,6 @@ bool Othello::hasValidMoves(char player) {
     return false;
 }
 
-void Othello::printValidMoves(char player) {
-    cout << "\nValid moves for player " << player << ": ";
-    bool found = false;
-    for (int i = 0; i < SIZE; i++)
-        for (int j = 0; j < SIZE; j++)
-            if (isValidMove(i, j, player)) {
-                cout << "(" << i << "," << j << ") ";
-                found = true;
-            }
-    if (!found) cout << "None";
-    cout << "\n";
-}
 
 vector<pair<int, int>> Othello::retrieveValidMoves(char player) {
     vector<pair<int, int>> moves;
@@ -110,9 +122,17 @@ pair<int, int> Othello::getScore() {
     return {x, o};
 }
 
+// ************************
+// Helper Functions
+// ************************
+
+char Othello::getCurrentPlayer(){
+    return currentPlayer;
+}
+
 
 // ************************
-// Take Turn Functions
+// Turn Logic Functions
 // ************************
 
 void Othello::human_turn(){

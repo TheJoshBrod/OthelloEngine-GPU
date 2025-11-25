@@ -3,14 +3,12 @@
 
 #include <iostream>
 #include <vector>
-#include <string>
-#include <limits>
-using namespace std;
+#include <utility>
 
 class Othello {
 private:
     static const int SIZE = 8;
-    vector<vector<char>> board;
+    std::vector<std::vector<char>> board;
     int human_players;
     char currentPlayer;
 
@@ -29,8 +27,11 @@ public:
     bool isValidMove(int row, int col, char player);
     void flipPieces(int row, int col, char player);
     bool hasValidMoves(char player);
-    vector<pair<int, int>> retrieveValidMoves(char player);
-    pair<int, int> getScore();
+    std::vector<std::pair<int, int>> retrieveValidMoves(char player);
+    std::pair<int, int> getScore();
+
+    // Helper functions
+    char getCurrentPlayer();
 
     // Turn logic
     void human_turn();
