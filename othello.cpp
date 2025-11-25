@@ -1,35 +1,38 @@
 #include "othello.h"
-#include <string>
+#include <iostream>
 #include <limits>
-#include <ios>
+#include <vector>
 using namespace std;
 
 // ************************
 // Constructor Functions
 // ************************
-
-Othello::Othello(int num_players)
-    : board(SIZE, vector<char>(SIZE, ' ')), currentPlayer('X'), human_players(num_players)
-{
-    board[3][3] = 'O';
-    board[3][4] = 'X';
-    board[4][3] = 'X';
-    board[4][4] = 'O';
+Othello::Othello(int num_players) : black(0), white(0), currentPlayer('X'), human_players(num_players) {
+    // Initial board setup
+    setBit(white, 3, 3);
+    setBit(black, 3, 4);
+    setBit(black, 4, 3);
+    setBit(white, 4, 4);
 }
-
 
 // ************************
 // Display / UI helpers
 // ************************
-
 void Othello::displayBoard() {
-    cout << "\n  ";
-    for (int i = 0; i < SIZE; i++) cout << i << " ";
+    cout << "\n   ";
+    for (int i = 0; i < SIZE; i++)
+        cout << i << " ";
     cout << "\n  ----------------\n";
-
     for (int i = 0; i < SIZE; i++) {
         cout << i << "|";
-        for (int j = 0; j < SIZE; j++) cout << board[i][j] << "|";
+        for (int j = 0; j < SIZE; j++) {
+            if (getBit(black, i, j))
+                cout << "X|";
+            else if (getBit(white, i, j))
+                cout << "O|";
+            else
+                cout << " |";
+        }
         cout << "\n  ----------------\n";
     }
 }
@@ -43,20 +46,22 @@ void Othello::printValidMoves(char player) {
                 cout << "(" << i << "," << j << ") ";
                 found = true;
             }
-    if (!found) cout << "None";
+    if (!found)
+        cout << "None";
     cout << "\n";
 }
-
 
 // ************************
 // Core game logic
 // ************************
-
 bool Othello::isValidMove(int row, int col, char player) {
-    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return false;
-    if (board[row][col] != ' ') return false;
+    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE)
+        return false;
+    if (getBit(black, row, col) || getBit(white, row, col))
+        return false;
 
-    char opponent = (player == 'X') ? 'O' : 'X';
+    uint64_t& myPieces = (player == 'X') ? black : white;
+    uint64_t& opponentPieces = (player == 'X') ? white : black;
 
     for (int dir = 0; dir < 8; dir++) {
         int r = row + dx[dir];
@@ -64,9 +69,12 @@ bool Othello::isValidMove(int row, int col, char player) {
         bool foundOpponent = false;
 
         while (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
-            if (board[r][c] == ' ') break;
-            if (board[r][c] == opponent) foundOpponent = true;
-            else if (board[r][c] == player) return foundOpponent;
+            if (!getBit(black, r, c) && !getBit(white, r, c))
+                break;
+            if (getBit(opponentPieces, r, c))
+                foundOpponent = true;
+            else if (getBit(myPieces, r, c))
+                return foundOpponent;
             r += dx[dir];
             c += dy[dir];
         }
@@ -75,8 +83,10 @@ bool Othello::isValidMove(int row, int col, char player) {
 }
 
 void Othello::flipPieces(int row, int col, char player) {
-    char opponent = (player == 'X') ? 'O' : 'X';
-    board[row][col] = player;
+    uint64_t& myPieces = (player == 'X') ? black : white;
+    uint64_t& opponentPieces = (player == 'X') ? white : black;
+
+    setBit(myPieces, row, col);
 
     for (int dir = 0; dir < 8; dir++) {
         int r = row + dx[dir];
@@ -84,10 +94,15 @@ void Othello::flipPieces(int row, int col, char player) {
         vector<pair<int, int>> toFlip;
 
         while (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
-            if (board[r][c] == ' ') break;
-            if (board[r][c] == opponent) toFlip.push_back({r, c});
-            else if (board[r][c] == player) {
-                for (auto& p : toFlip) board[p.first][p.second] = player;
+            if (!getBit(black, r, c) && !getBit(white, r, c))
+                break;
+            if (getBit(opponentPieces, r, c))
+                toFlip.push_back({r, c});
+            else if (getBit(myPieces, r, c)) {
+                for (auto& p : toFlip) {
+                    clearBit(opponentPieces, p.first, p.second);
+                    setBit(myPieces, p.first, p.second);
+                }
                 break;
             }
             r += dx[dir];
@@ -99,16 +114,17 @@ void Othello::flipPieces(int row, int col, char player) {
 bool Othello::hasValidMoves(char player) {
     for (int i = 0; i < SIZE; i++)
         for (int j = 0; j < SIZE; j++)
-            if (isValidMove(i, j, player)) return true;
+            if (isValidMove(i, j, player))
+                return true;
     return false;
 }
-
 
 vector<pair<int, int>> Othello::retrieveValidMoves(char player) {
     vector<pair<int, int>> moves;
     for (int i = 0; i < SIZE; i++)
         for (int j = 0; j < SIZE; j++)
-            if (isValidMove(i, j, player)) moves.push_back({i, j});
+            if (isValidMove(i, j, player))
+                moves.push_back({i, j});
     return moves;
 }
 
@@ -116,8 +132,10 @@ pair<int, int> Othello::getScore() {
     int x = 0, o = 0;
     for (int i = 0; i < SIZE; i++)
         for (int j = 0; j < SIZE; j++) {
-            if (board[i][j] == 'X') x++;
-            else if (board[i][j] == 'O') o++;
+            if (getBit(black, i, j))
+                x++;
+            else if (getBit(white, i, j))
+                o++;
         }
     return {x, o};
 }
@@ -125,16 +143,25 @@ pair<int, int> Othello::getScore() {
 // ************************
 // Helper Functions
 // ************************
-
 char Othello::getCurrentPlayer(){
     return currentPlayer;
 }
 
+void Othello::setBit(uint64_t& board, int row, int col) {
+    board |= (1ULL << (row * SIZE + col));
+}
+
+void Othello::clearBit(uint64_t& board, int row, int col) {
+    board &= ~(1ULL << (row * SIZE + col));
+}
+
+bool Othello::getBit(uint64_t board, int row, int col) {
+    return (board & (1ULL << (row * SIZE + col))) != 0;
+}
 
 // ************************
 // Turn Logic Functions
 // ************************
-
 void Othello::human_turn(){
     while (true){
         int row, col;
@@ -143,7 +170,6 @@ void Othello::human_turn(){
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cout << "Invalid input. Please enter two numbers.\n";
         }
-
         if (isValidMove(row, col, currentPlayer)) {
             flipPieces(row, col, currentPlayer);
             currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
@@ -151,27 +177,22 @@ void Othello::human_turn(){
         } else {
             cout << "Invalid move! Try again.\n";
         }
-
         displayBoard();
     }
 }
 
 void Othello::computer_turn(){
-    vector<pair<int,int>> moves = retrieveValidMoves(currentPlayer);
+    vector<pair<int, int>> moves = retrieveValidMoves(currentPlayer);
     if (!moves.empty())
         flipPieces(moves[0].first, moves[0].second, currentPlayer);
-
     currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
 }
-
 
 // ************************
 // Gameplay Loop Functions
 // ************************
-
 void Othello::play() {
     cout << "=== OTHELLO GAME ===\n";
-
     while (true) {
         displayBoard();
         auto [xScore, oScore] = getScore();

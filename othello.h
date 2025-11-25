@@ -4,16 +4,23 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <cstdint>
 
 class Othello {
 private:
     static const int SIZE = 8;
-    std::vector<std::vector<char>> board;
+    uint64_t black;
+    uint64_t white;
     int human_players;
     char currentPlayer;
 
     const int dx[8] = { -1,-1,-1,0,0,1,1,1 };
     const int dy[8] = { -1,0,1,-1,1,-1,0,1 };
+
+    // Bitmap helper functions
+    void setBit(uint64_t& board, int row, int col);
+    void clearBit(uint64_t& board, int row, int col);
+    bool getBit(uint64_t board, int row, int col);
 
 public:
     // Constructor
