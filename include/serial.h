@@ -7,8 +7,6 @@
 // Forward declaration
 class Othello;
 
-int8_t minimax(Othello game);
-
 // Usage:
 // is_tile_black(x=0,y=1) = black && (x*8 + y) 
 struct GameState {
@@ -49,6 +47,10 @@ struct TTEntry {
     uint8_t bestMove; 
 };
 
-GameState best_move(Othello* game);
+// Unified serial negamax entrypoint (time limit in ms, currently unused)
+GameState negamax_serial(Othello* game, int time_limit_ms);
+
+// Expose bitboard move generator for other modules
+std::vector<GameState> find_all_moves(GameState state);
 
 #endif

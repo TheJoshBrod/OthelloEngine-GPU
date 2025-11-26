@@ -1,13 +1,10 @@
 #include "serial.h"
 #include "othello.h"
-#include <unordered_map>
-#include <stack>
-#include <math.h>
+#include "heuristic.h"
+#include <cmath>
+#include <vector>
 
 using namespace std;
-
-// Define the globals declared in the header
-static std::unordered_map<GameState, TTEntry, GameStateHash> table;
 
 GameState make_move(GameState state, uint64_t move_bit) {
     GameState new_state;
@@ -115,90 +112,99 @@ vector<GameState> find_all_moves(GameState state) {
 }
 
 int8_t score_board(GameState state, bool is_black){
-    int8_t black_score = __builtin_popcountll(state.black) - __builtin_popcountll(state.white);
-    return (is_black) ? black_score : -black_score;
+    double h = dynamic_heuristic_evaluation(state, is_black);
+    if (std::isnan(h) || std::isinf(h)) h = 0.0;
+    if (h > 127.0) h = 127.0;
+    if (h < -127.0) h = -127.0;
+    return static_cast<int8_t>(std::round(h));
 }
 
-int8_t minimax(GameState state, bool is_black){
-    if (table.find(state) != table.end()){
-        return table[state].score;
-    }
+// Removed old minimax / transposition table and best_move functions.
+// This file now exposes move generation, scoring, and the iterative-deepening negamax entrypoint.
+
+// Iterative deepening negamax with simple alpha-beta and time limit
+// Starts at depth 3 and increases until time expires (time_limit_ms==0 means no limit)
+#include <chrono>
+
+static std::chrono::steady_clock::time_point g_start_time;
+static int g_time_limit_ms = 0;
+static bool time_exceeded() {
+    if (g_time_limit_ms <= 0) return false;
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - g_start_time).count();
+    return elapsed >= g_time_limit_ms;
+}
+
+// Depth-limited negamax with alpha-beta. Returns score from perspective of 'is_black'.
+int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_black) {
+    if (time_exceeded()) return 0;
 
     vector<GameState> children = find_all_moves(state);
     if (children.empty()){
-        // If no children, skip turn
-        GameState skip_turn = state;
-        skip_turn.black_turn = !skip_turn.black_turn;
-        children = find_all_moves(skip_turn);
-        
-        // If after skip STILL no valid moves gameover
+        // try skip turn
+        GameState skip = state;
+        skip.black_turn = !skip.black_turn;
+        children = find_all_moves(skip);
         if (children.empty()){
             return score_board(state, is_black);
         }
     }
 
-    bool is_my_turn = (state.black_turn && is_black) || (!state.black_turn && !is_black);
-    int16_t best_score = is_my_turn ? -127 : 127;
-    uint8_t best_move = 0;
-    for (GameState child : children){
-        // Recursively calculate score
-        int8_t score = minimax(child, is_black);
-        
-        // Convert board state diff to tile selected
-        // Note to self: __builtin_ctzll = how many 0s before first 1
-        // AKA compiler function that is faster than log_2(child.white & ~state.white) 
-        uint8_t move;
-        if (state.black_turn)
-            move = __builtin_ctzll(child.black & ~state.black);
-        else
-            move = __builtin_ctzll(child.white & ~state.white);
-
-        // Calculate which score is optimal (min v max)
-        if (is_my_turn && best_score < score){
-            best_score = score;
-            best_move = move;
-        }
-        else if (!is_my_turn && score < best_score){
-            best_score = score;
-            best_move = move;
-        }
+    if (depth == 0) {
+        return score_board(state, is_black);
     }
 
-    table[state] = {best_score, best_move};
-
-    return best_score;
+    int best = -128;
+    for (const GameState& child : children){
+        int val = -negamax_dfs(child, depth - 1, -beta, -alpha, is_black);
+        if (time_exceeded()) return 0;
+        if (val > best) best = val;
+        if (best > alpha) alpha = best;
+        if (alpha >= beta) break; // beta cutoff
+    }
+    return best;
 }
 
-GameState best_move(Othello* game){
-    
-    // Find children
-    GameState state = game->get_board();
-    vector<GameState> children = find_all_moves(state);
-    
-    // Determine which player we're finding the best move for
+GameState negamax_serial(Othello* game, int time_limit_ms) {
+    GameState root = game->get_board();
     bool is_black = game->getCurrentPlayer() == 'X';
-    
-    // If no valid moves, return current state (game will handle skipping turn)
-    if (children.empty()) {
-        return state;
-    }
-    
-    // Evaluate each child and find the best one
-    // minimax returns score from is_black player's perspective, so we always maximize
-    int16_t best_score = -127;
+
+    g_time_limit_ms = time_limit_ms;
+    g_start_time = std::chrono::steady_clock::now();
+
+    // Get initial moves
+    vector<GameState> children = find_all_moves(root);
+    if (children.empty()) return root; // no move
+
     GameState best_state = children[0];
-    
-    for(auto child : children){
-        
-        cout << is_black << endl;
-        int8_t score = minimax(child, is_black);
-        
-        cout << score << endl;
-        // Always maximize since score is from current player's perspective
-        if (score > best_score) {
-            best_score = score;
-            best_state = child;
+
+    int depth = 3;
+    while (true) {
+        if (time_exceeded()) break;
+
+        int16_t best_score = -127;
+        GameState best_at_this_depth = best_state;
+
+        for (const GameState& child : children) {
+            if (time_exceeded()) break;
+            int score = negamax_dfs(child, depth - 1, -128, 128, is_black);
+            if (time_exceeded()) break;
+            if (score > best_score) {
+                best_score = score;
+                best_at_this_depth = child;
+            }
+        }
+
+        if (!time_exceeded()) {
+            // commit results of this completed depth
+            best_state = best_at_this_depth;
+            depth++;
+            // safety cap to avoid infinite loop
+            if (depth > 64) break;
+        } else {
+            break; // time ran out during this depth
         }
     }
+
     return best_state;
 }

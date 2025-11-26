@@ -2,13 +2,14 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+#include "negamax.h"
 
 using namespace std;
 
 // ************************
 // Constructor Functions
 // ************************
-Othello::Othello(int num_players, ai_type ai_mode) : black(0), white(0), currentPlayer('X'), human_players(num_players), computer_mode(ai_mode) {
+Othello::Othello(int num_players, ai_type ai_mode, char human_side_in, int time_limit_ms_in) : black(0), white(0), currentPlayer('X'), human_players(num_players), human_side(human_side_in), computer_mode(ai_mode), time_limit_ms(time_limit_ms_in) {
     // Initial board setup
     setBit(white, 3, 3);
     setBit(black, 3, 4);
@@ -199,7 +200,9 @@ void Othello::computer_turn(){
             flipPieces(moves[0].first, moves[0].second, currentPlayer);
     }
     else{
-        GameState new_board = best_move(this);
+        // Use the unified negamax entrypoint (serial or parallel) with the configured time limit
+        extern GameState (*negamax_fn)(Othello*, int);
+        GameState new_board = negamax_fn(this, time_limit_ms);
         white = new_board.white;
         black = new_board.black;
     }
@@ -226,10 +229,13 @@ void Othello::play() {
             continue;
         }
 
-        if (human_players == 2 || (human_players == 1 && currentPlayer == 'X'))
+        if (human_players == 2 || (human_players == 1 && currentPlayer == human_side))
             human_turn();
         else
             computer_turn();
+
+        // Print board after the move was made
+        displayBoard();
 
         // Flip turns
         currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';

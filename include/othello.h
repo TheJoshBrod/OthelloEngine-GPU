@@ -20,9 +20,11 @@ private:
     uint64_t black;
     uint64_t white;
     int human_players;
+    char human_side; // 'X' or 'O' when human_players == 1
     char currentPlayer;
 
     ai_type computer_mode; 
+    int time_limit_ms; // per-move time limit passed to negamax
 
     const int dx[8] = { -1,-1,-1,0,0,1,1,1 };
     const int dy[8] = { -1,0,1,-1,1,-1,0,1 };
@@ -34,7 +36,7 @@ private:
 
 public:
     // Constructor
-    Othello(int num_players, ai_type ai_mode);
+    Othello(int num_players, ai_type ai_mode, char human_side_in = 'X', int time_limit_ms_in = 0);
 
     // Display / UI helpers
     void displayBoard();
