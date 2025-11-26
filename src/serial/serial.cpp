@@ -1,8 +1,8 @@
+#include "serial.h"
+#include "othello.h"
 #include <unordered_map>
 #include <stack>
 #include <math.h>
-#include "serial.h"
-#include "othello.h"
 
 using namespace std;
 

@@ -1,11 +1,12 @@
 #ifndef OTHELLO_H
 #define OTHELLO_H
 
+#include "serial.h"
+#include "parallel.h"
 #include <iostream>
 #include <vector>
 #include <utility>
 #include <cstdint>
-#include "serial.h"
 
 enum ai_type{
     first_move,

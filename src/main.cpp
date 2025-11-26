@@ -1,6 +1,6 @@
+#include "othello.h"
 #include <iostream>
 #include <string>
-#include "othello.h"
 
 using namespace std;
 
@@ -15,7 +15,6 @@ int main(int argc, char* argv[]) {
         cout << "Must have between 0-2 human players\n";
         return 1;
     }
-
 
     Othello game(num_players, best_move_serial);
     game.play();
