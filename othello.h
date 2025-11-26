@@ -5,6 +5,13 @@
 #include <vector>
 #include <utility>
 #include <cstdint>
+#include "serial.h"
+
+enum ai_type{
+    first_move,
+    best_move_serial
+};
+
 
 class Othello {
 private:
@@ -13,6 +20,8 @@ private:
     uint64_t white;
     int human_players;
     char currentPlayer;
+
+    ai_type computer_mode; 
 
     const int dx[8] = { -1,-1,-1,0,0,1,1,1 };
     const int dy[8] = { -1,0,1,-1,1,-1,0,1 };
@@ -24,7 +33,7 @@ private:
 
 public:
     // Constructor
-    Othello(int num_players);
+    Othello(int num_players, ai_type ai_mode);
 
     // Display / UI helpers
     void displayBoard();
@@ -39,6 +48,7 @@ public:
 
     // Helper functions
     char getCurrentPlayer();
+    GameState get_board();
 
     // Turn logic
     void human_turn();

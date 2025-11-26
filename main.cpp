@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     }
 
 
-    Othello game(num_players);
+    Othello game(num_players, best_move_serial);
     game.play();
     return 0;
 }

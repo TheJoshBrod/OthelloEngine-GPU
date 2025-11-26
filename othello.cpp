@@ -1,4 +1,5 @@
 #include "othello.h"
+#include "serial.h"
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -7,7 +8,7 @@ using namespace std;
 // ************************
 // Constructor Functions
 // ************************
-Othello::Othello(int num_players) : black(0), white(0), currentPlayer('X'), human_players(num_players) {
+Othello::Othello(int num_players, ai_type ai_mode) : black(0), white(0), currentPlayer('X'), human_players(num_players), computer_mode(ai_mode) {
     // Initial board setup
     setBit(white, 3, 3);
     setBit(black, 3, 4);
@@ -147,6 +148,10 @@ char Othello::getCurrentPlayer(){
     return currentPlayer;
 }
 
+GameState Othello::get_board(){
+    return {white, black, currentPlayer == 'X'};
+}
+
 void Othello::setBit(uint64_t& board, int row, int col) {
     board |= (1ULL << (row * SIZE + col));
 }
@@ -163,6 +168,9 @@ bool Othello::getBit(uint64_t board, int row, int col) {
 // Turn Logic Functions
 // ************************
 void Othello::human_turn(){
+    displayBoard();    
+    printValidMoves(currentPlayer);
+
     while (true){
         int row, col;
         if (!(cin >> row >> col)) {
@@ -172,20 +180,27 @@ void Othello::human_turn(){
         }
         if (isValidMove(row, col, currentPlayer)) {
             flipPieces(row, col, currentPlayer);
-            currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
             return;
         } else {
             cout << "Invalid move! Try again.\n";
         }
-        displayBoard();
+        displayBoard();        
+        printValidMoves(currentPlayer);
+
     }
 }
 
 void Othello::computer_turn(){
-    vector<pair<int, int>> moves = retrieveValidMoves(currentPlayer);
-    if (!moves.empty())
-        flipPieces(moves[0].first, moves[0].second, currentPlayer);
-    currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+    if (computer_mode == first_move){
+        vector<pair<int, int>> moves = retrieveValidMoves(currentPlayer);
+        if (!moves.empty())
+            flipPieces(moves[0].first, moves[0].second, currentPlayer);
+    }
+    else{
+        GameState new_board = best_move(this);
+        white = new_board.white;
+        black = new_board.black;
+    }
 }
 
 // ************************
@@ -194,7 +209,6 @@ void Othello::computer_turn(){
 void Othello::play() {
     cout << "=== OTHELLO GAME ===\n";
     while (true) {
-        displayBoard();
         auto [xScore, oScore] = getScore();
         cout << "\nScore - X: " << xScore << " | O: " << oScore << "\n";
 
@@ -210,11 +224,12 @@ void Othello::play() {
             continue;
         }
 
-        printValidMoves(currentPlayer);
-
         if (human_players == 2 || (human_players == 1 && currentPlayer == 'X'))
             human_turn();
         else
             computer_turn();
+
+        // Flip turns
+        currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
     }
 }
