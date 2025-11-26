@@ -70,12 +70,14 @@ bool Othello::isValidMove(int row, int col, char player) {
         bool foundOpponent = false;
 
         while (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
-            if (!getBit(black, r, c) && !getBit(white, r, c))
-                break;
-            if (getBit(opponentPieces, r, c))
+            if (getBit(opponentPieces, r, c)) {
                 foundOpponent = true;
-            else if (getBit(myPieces, r, c))
-                return foundOpponent;
+            } else if (getBit(myPieces, r, c)) {
+                if (foundOpponent) return true;
+                break;
+            } else {
+                break;
+            }
             r += dx[dir];
             c += dy[dir];
         }
