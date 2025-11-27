@@ -8,8 +8,8 @@ using namespace std;
 
 GameState make_move(GameState state, uint64_t move_bit) {
     GameState new_state;
-    uint64_t my_pieces = state.black_turn ? state.black : state.white;
-    uint64_t opp_pieces = state.black_turn ? state.white : state.black;
+    uint64_t my_pieces = state.x_turn ? state.x : state.o;
+    uint64_t opp_pieces = state.x_turn ? state.o : state.x;
     uint64_t flipped = 0;
     
     // Check all 8 directions and flip pieces
@@ -37,13 +37,13 @@ GameState make_move(GameState state, uint64_t move_bit) {
     my_pieces |= move_bit | flipped;
     opp_pieces &= ~flipped;
     
-    new_state.black_turn = !state.black_turn;
-    if (state.black_turn) {
-        new_state.black = my_pieces;
-        new_state.white = opp_pieces;
+    new_state.x_turn = !state.x_turn;
+    if (state.x_turn) {
+        new_state.x = my_pieces;
+        new_state.o = opp_pieces;
     } else {
-        new_state.white = my_pieces;
-        new_state.black = opp_pieces;
+        new_state.o = my_pieces;
+        new_state.x = opp_pieces;
     }
     
     return new_state;
@@ -52,8 +52,8 @@ GameState make_move(GameState state, uint64_t move_bit) {
 vector<GameState> find_all_moves(GameState state) {
     vector<GameState> moves;
     
-    uint64_t my_pieces = state.black_turn ? state.black : state.white;
-    uint64_t opp_pieces = state.black_turn ? state.white : state.black;
+    uint64_t my_pieces = state.x_turn ? state.x : state.o;
+    uint64_t opp_pieces = state.x_turn ? state.o : state.x;
     uint64_t empty = ~(my_pieces | opp_pieces);
     
     // Directions: N, NE, E, SE, S, SW, W, NW
@@ -143,7 +143,7 @@ int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_
     if (children.empty()){
         // try skip turn
         GameState skip = state;
-        skip.black_turn = !skip.black_turn;
+        skip.x_turn = !skip.x_turn;
         children = find_all_moves(skip);
         if (children.empty()){
             return score_board(state, is_black);

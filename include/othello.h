@@ -17,8 +17,8 @@ enum ai_type{
 class Othello {
 private:
     static const int SIZE = 8;
-    uint64_t black;
-    uint64_t white;
+    uint64_t x;
+    uint64_t o;
     int human_players;
     char human_side; // 'X' or 'O' when human_players == 1
     char currentPlayer;

@@ -9,12 +9,12 @@ using namespace std;
 // ************************
 // Constructor Functions
 // ************************
-Othello::Othello(int num_players, ai_type ai_mode, char human_side_in, int time_limit_ms_in) : black(0), white(0), currentPlayer('X'), human_players(num_players), human_side(human_side_in), computer_mode(ai_mode), time_limit_ms(time_limit_ms_in) {
+Othello::Othello(int num_players, ai_type ai_mode, char human_side_in, int time_limit_ms_in) : x(0), o(0), currentPlayer('X'), human_players(num_players), human_side(human_side_in), computer_mode(ai_mode), time_limit_ms(time_limit_ms_in) {
     // Initial board setup
-    setBit(white, 3, 3);
-    setBit(black, 3, 4);
-    setBit(black, 4, 3);
-    setBit(white, 4, 4);
+    setBit(o, 3, 3);
+    setBit(x, 3, 4);
+    setBit(x, 4, 3);
+    setBit(o, 4, 4);
 }
 
 // ************************
@@ -28,9 +28,9 @@ void Othello::displayBoard() {
     for (int i = 0; i < SIZE; i++) {
         cout << i << "|";
         for (int j = 0; j < SIZE; j++) {
-            if (getBit(black, i, j))
+            if (getBit(x, i, j))
                 cout << " \033[31mX\033[0m |";
-            else if (getBit(white, i, j))
+            else if (getBit(o, i, j))
                 cout << " \033[34mO\033[0m |";
             else
                 cout << "   |";
@@ -59,11 +59,10 @@ void Othello::printValidMoves(char player) {
 bool Othello::isValidMove(int row, int col, char player) {
     if (row < 0 || row >= SIZE || col < 0 || col >= SIZE)
         return false;
-    if (getBit(black, row, col) || getBit(white, row, col))
+    if (getBit(x, row, col) || getBit(o, row, col))
         return false;
-
-    uint64_t& myPieces = (player == 'X') ? black : white;
-    uint64_t& opponentPieces = (player == 'X') ? white : black;
+    uint64_t& myPieces = (player == 'X') ? x : o;
+    uint64_t& opponentPieces = (player == 'X') ? o : x;
 
     for (int dir = 0; dir < 8; dir++) {
         int r = row + dx[dir];
@@ -87,8 +86,8 @@ bool Othello::isValidMove(int row, int col, char player) {
 }
 
 void Othello::flipPieces(int row, int col, char player) {
-    uint64_t& myPieces = (player == 'X') ? black : white;
-    uint64_t& opponentPieces = (player == 'X') ? white : black;
+    uint64_t& myPieces = (player == 'X') ? x : o;
+    uint64_t& opponentPieces = (player == 'X') ? o : x;
 
     setBit(myPieces, row, col);
 
@@ -98,7 +97,7 @@ void Othello::flipPieces(int row, int col, char player) {
         vector<pair<int, int>> toFlip;
 
         while (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
-            if (!getBit(black, r, c) && !getBit(white, r, c))
+            if (!getBit(x, r, c) && !getBit(o, r, c))
                 break;
             if (getBit(opponentPieces, r, c))
                 toFlip.push_back({r, c});
@@ -136,9 +135,9 @@ pair<int, int> Othello::getScore() {
     int x = 0, o = 0;
     for (int i = 0; i < SIZE; i++)
         for (int j = 0; j < SIZE; j++) {
-            if (getBit(black, i, j))
+            if (getBit(x, i, j))
                 x++;
-            else if (getBit(white, i, j))
+            else if (getBit(o, i, j))
                 o++;
         }
     return {x, o};
@@ -152,7 +151,7 @@ char Othello::getCurrentPlayer(){
 }
 
 GameState Othello::get_board(){
-    return {white, black, currentPlayer == 'X'};
+    return {o, x, currentPlayer == 'X'};
 }
 
 void Othello::setBit(uint64_t& board, int row, int col) {
@@ -203,8 +202,8 @@ void Othello::computer_turn(){
         // Use the unified negamax entrypoint (serial or parallel) with the configured time limit
         extern GameState (*negamax_fn)(Othello*, int);
         GameState new_board = negamax_fn(this, time_limit_ms);
-        white = new_board.white;
-        black = new_board.black;
+        o = new_board.o;
+        x = new_board.x;
     }
 }
 

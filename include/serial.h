@@ -8,32 +8,32 @@
 class Othello;
 
 // Usage:
-// is_tile_black(x=0,y=1) = black && (x*8 + y) 
+// is_tile_X(x=0,y=1) = x && (x*8 + y) 
 struct GameState {
-    uint64_t white;
-    uint64_t black;
-    bool black_turn;
+    uint64_t o;
+    uint64_t x;
+    bool x_turn;
     
     // Operators for map/set usage
     bool operator<(const GameState& other) const {
-        if (white != other.white) return white < other.white;
-        if (black != other.black) return black < other.black;
-        return black_turn < other.black_turn;
+        if (o != other.o) return o < other.o;
+        if (x != other.x) return x < other.x;
+        return x_turn < other.x_turn;
     }
     
     bool operator==(const GameState& other) const {
-        return white == other.white && black == other.black && black_turn == other.black_turn;
+        return o == other.o && x == other.x && x_turn == other.x_turn;
     }
 };
 
 // Quick hash for maps/sets
 struct GameStateHash {
     size_t operator()(const GameState& p) const {
-        // Start with the white pieces
-        size_t seed = std::hash<uint64_t>()(p.white);
+        // Start with the O pieces
+        size_t seed = std::hash<uint64_t>()(p.o);
 
-        seed ^= std::hash<uint64_t>()(p.black) + 0x9E3779B97F4A7C15ULL + (seed << 6) + (seed >> 2);
-        seed ^= std::hash<bool>()(p.black_turn) + 0x9E3779B97F4A7C15ULL + (seed << 6) + (seed >> 2);
+        seed ^= std::hash<uint64_t>()(p.x) + 0x9E3779B97F4A7C15ULL + (seed << 6) + (seed >> 2);
+        seed ^= std::hash<bool>()(p.x_turn) + 0x9E3779B97F4A7C15ULL + (seed << 6) + (seed >> 2);
 
         return seed;
     }

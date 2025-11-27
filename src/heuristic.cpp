@@ -11,18 +11,18 @@ static inline int popcount(uint64_t x){ return __builtin_popcountll(x); }
 
 int num_valid_moves(const GameState& state, bool for_black){
     GameState s = state;
-    s.black_turn = for_black;
+    s.x_turn = for_black;
     auto moves = find_all_moves(s);
     return static_cast<int>(moves.size());
 }
 
 // Pure bitboard evaluator implementing the provided heuristic
 double dynamic_heuristic_evaluation(const GameState& state, bool is_black){
-    uint64_t black = state.black;
-    uint64_t white = state.white;
-    uint64_t my_pieces = is_black ? black : white;
-    uint64_t opp_pieces = is_black ? white : black;
-    uint64_t occupied = black | white;
+    uint64_t x = state.x;
+    uint64_t o = state.o;
+    uint64_t my_pieces = is_black ? x : o;
+    uint64_t opp_pieces = is_black ? o : x;
+    uint64_t occupied = x | o;
     uint64_t empty = ~occupied;
 
     double p = 0, c = 0, l = 0, m = 0, f = 0, d = 0;
