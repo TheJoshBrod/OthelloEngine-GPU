@@ -23,19 +23,19 @@ Othello::Othello(int num_players, ai_type ai_mode, char human_side_in, int time_
 void Othello::displayBoard() {
     cout << "\n   ";
     for (int i = 0; i < SIZE; i++)
-        cout << i << " ";
-    cout << "\n  ----------------\n";
+        cout << i << "   ";
+    cout << "\n  --------------------------------\n";
     for (int i = 0; i < SIZE; i++) {
         cout << i << "|";
         for (int j = 0; j < SIZE; j++) {
             if (getBit(black, i, j))
-                cout << "X|";
+                cout << " \033[31mX\033[0m |";
             else if (getBit(white, i, j))
-                cout << "O|";
+                cout << " \033[34mO\033[0m |";
             else
-                cout << " |";
+                cout << "   |";
         }
-        cout << "\n  ----------------\n";
+        cout << "\n  --------------------------------\n";
     }
 }
 
