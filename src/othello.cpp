@@ -132,15 +132,15 @@ vector<pair<int, int>> Othello::retrieveValidMoves(char player) {
 }
 
 pair<int, int> Othello::getScore() {
-    int x = 0, o = 0;
+    int xCount = 0, oCount = 0;
     for (int i = 0; i < SIZE; i++)
         for (int j = 0; j < SIZE; j++) {
-            if (getBit(x, i, j))
-                x++;
-            else if (getBit(o, i, j))
-                o++;
+            if (getBit(this->x, i, j))
+                xCount++;
+            else if (getBit(this->o, i, j))
+                oCount++;
         }
-    return {x, o};
+    return {xCount, oCount};
 }
 
 // ************************
@@ -152,6 +152,13 @@ char Othello::getCurrentPlayer(){
 
 GameState Othello::get_board(){
     return {o, x, currentPlayer == 'X'};
+}
+
+// Debug/testing helper
+void Othello::setBoard(uint64_t x_in, uint64_t o_in, char cur) {
+    x = x_in;
+    o = o_in;
+    currentPlayer = cur;
 }
 
 void Othello::setBit(uint64_t& board, int row, int col) {
@@ -179,6 +186,7 @@ void Othello::human_turn(){
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cout << "Invalid input. Please enter two numbers.\n";
+            continue;
         }
         if (isValidMove(row, col, currentPlayer)) {
             flipPieces(row, col, currentPlayer);

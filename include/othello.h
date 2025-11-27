@@ -52,6 +52,8 @@ public:
     // Helper functions
     char getCurrentPlayer();
     GameState get_board();
+    // Debug/testing helper: set internal board directly
+    void setBoard(uint64_t x_in, uint64_t o_in, char cur);
 
     // Turn logic
     void human_turn();
