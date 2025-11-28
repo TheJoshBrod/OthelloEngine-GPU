@@ -30,8 +30,8 @@ int main(int argc, char* argv[]) {
 
     // Ask user for role
     cout << "Choose mode:\n";
-    cout << "  1) Play as X\n";
-    cout << "  2) Play as O\n";
+    cout << "  1) Play as \033[31mX\033[0m\n";
+    cout << "  2) Play as \033[34mO\033[0m\n";
     cout << "  3) AI vs AI\n";
     int choice = 0;
     while (!(cin >> choice) || choice < 1 || choice > 3) {

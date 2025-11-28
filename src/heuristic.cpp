@@ -9,19 +9,19 @@ static const uint64_t FILE_H = 0x8080808080808080ULL;
 
 static inline int popcount(uint64_t x){ return __builtin_popcountll(x); }
 
-int num_valid_moves(const GameState& state, bool for_black){
+int num_valid_moves(const GameState& state, bool for_x){
     GameState s = state;
-    s.x_turn = for_black;
+    s.x_turn = for_x;
     auto moves = find_all_moves(s);
     return static_cast<int>(moves.size());
 }
 
 // Pure bitboard evaluator implementing the provided heuristic
-double dynamic_heuristic_evaluation(const GameState& state, bool is_black){
+double dynamic_heuristic_evaluation(const GameState& state, bool is_x){
     uint64_t x = state.x;
     uint64_t o = state.o;
-    uint64_t my_pieces = is_black ? x : o;
-    uint64_t opp_pieces = is_black ? o : x;
+    uint64_t my_pieces = is_x ? x : o;
+    uint64_t opp_pieces = is_x ? o : x;
     uint64_t occupied = x | o;
     uint64_t empty = ~occupied;
 
@@ -125,8 +125,8 @@ double dynamic_heuristic_evaluation(const GameState& state, bool is_black){
     l = -12.5 * (my_close - opp_close);
 
     // Mobility using bitboard move generator
-    int my_moves = num_valid_moves(state, is_black);
-    int opp_moves = num_valid_moves(state, !is_black);
+    int my_moves = num_valid_moves(state, is_x);
+    int opp_moves = num_valid_moves(state, !is_x);
     if (my_moves + opp_moves > 0){
         if (my_moves > opp_moves) m = (100.0 * my_moves) / (my_moves + opp_moves);
         else if (my_moves < opp_moves) m = -(100.0 * opp_moves) / (my_moves + opp_moves);

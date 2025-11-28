@@ -111,8 +111,8 @@ vector<GameState> find_all_moves(GameState state) {
     return moves;
 }
 
-int8_t score_board(GameState state, bool is_black){
-    double h = dynamic_heuristic_evaluation(state, is_black);
+int8_t score_board(GameState state, bool is_x){
+    double h = dynamic_heuristic_evaluation(state, is_x);
     if (std::isnan(h) || std::isinf(h)) h = 0.0;
     if (h > 127.0) h = 127.0;
     if (h < -127.0) h = -127.0;
@@ -135,8 +135,8 @@ static bool time_exceeded() {
     return elapsed >= g_time_limit_ms;
 }
 
-// Depth-limited negamax with alpha-beta. Returns score from perspective of 'is_black'.
-int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_black) {
+// Depth-limited negamax with alpha-beta. Returns score from perspective of 'is_x'.
+int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_x) {
     if (time_exceeded()) return 0;
 
     vector<GameState> children = find_all_moves(state);
@@ -146,17 +146,17 @@ int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_
         skip.x_turn = !skip.x_turn;
         children = find_all_moves(skip);
         if (children.empty()){
-            return score_board(state, is_black);
+            return score_board(state, is_x);
         }
     }
 
     if (depth == 0) {
-        return score_board(state, is_black);
+        return score_board(state, is_x);
     }
 
     int best = -128;
     for (const GameState& child : children){
-        int val = -negamax_dfs(child, depth - 1, -beta, -alpha, is_black);
+        int val = -negamax_dfs(child, depth - 1, -beta, -alpha, is_x);
         if (time_exceeded()) return 0;
         if (val > best) best = val;
         if (best > alpha) alpha = best;
@@ -167,14 +167,15 @@ int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_
 
 GameState negamax_serial(Othello* game, int time_limit_ms) {
     GameState root = game->get_board();
-    bool is_black = game->getCurrentPlayer() == 'X';
+    bool is_x = game->getCurrentPlayer() == 'X';
 
     g_time_limit_ms = time_limit_ms;
     g_start_time = std::chrono::steady_clock::now();
 
     // Get initial moves
     vector<GameState> children = find_all_moves(root);
-    if (children.empty()) return root; // no move
+    if (children.empty()) return root;
+    if (children.size() == 1) return children[0];
 
     GameState best_state = children[0];
 
@@ -187,7 +188,7 @@ GameState negamax_serial(Othello* game, int time_limit_ms) {
 
         for (const GameState& child : children) {
             if (time_exceeded()) break;
-            int score = negamax_dfs(child, depth - 1, -128, 128, is_black);
+            int score = negamax_dfs(child, depth - 1, -128, 128, is_x);
             if (time_exceeded()) break;
             if (score > best_score) {
                 best_score = score;
