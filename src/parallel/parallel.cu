@@ -2,12 +2,19 @@
 #include "parallel.h"
 #include "serial.h"
 #include "othello.h"
+#include <set>
+#include <chrono>
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <math_constants.h>
 #include <cfloat>
 
 
+// Find next generation of board states
+__global__ void find_all_moves(const uint64_t* x, const uint64_t* o, const uint8_t* x_turn){
+
+
+}
 
 // Find heuristic score of each value
 __global__ void heuristic(const uint64_t* x, const uint64_t* o, const uint8_t* x_turn, float* score, int n) {
@@ -226,18 +233,130 @@ __global__ void findMaxPerBlock(const float* arr, int size, float* blockVals, in
     }
 }
 
+static int g_time_limit_ms = 0;
+static auto g_start_time = std::chrono::steady_clock::now();
+static bool time_exceeded() {
+    if (g_time_limit_ms <= 0) return false;
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - g_start_time).count();
+    return elapsed >= g_time_limit_ms;
+}
+
+std::set<GameState, GameStateHash> serial_find_all_moves(GameState state) {
+    std::set<GameState, GameStateHash> moves;
+    
+    uint64_t my_pieces  = state.x_turn ? state.x : state.o;
+    uint64_t opp_pieces = state.x_turn ? state.o : state.x;
+    uint64_t empty      = ~(my_pieces | opp_pieces);
+    
+    const int shifts[8] = {8, 9, 1, -7, -8, -9, -1, 7};
+    const uint64_t masks[8] = {
+        0xFFFFFFFFFFFFFF00ULL,
+        0xFEFEFEFEFEFEFE00ULL,
+        0xFEFEFEFEFEFEFEFEULL,
+        0xFEFEFEFEFEFEFE00ULL,
+        0x00FFFFFFFFFFFFFFULL,
+        0x007F7F7F7F7F7F7FULL,
+        0x7F7F7F7F7F7F7F7FULL,
+        0x7F7F7F7F7F7F7F00ULL
+    };
+
+    uint64_t valid_moves = 0;
+
+    // --- FIND VALID MOVE POSITIONS ---
+    for (int dir = 0; dir < 8; dir++) {
+        int shift = shifts[dir];
+        uint64_t mask = masks[dir];
+        
+        uint64_t candidates = opp_pieces & mask;
+        
+        if (shift > 0)
+            candidates &= (my_pieces << shift);
+        else
+            candidates &= (my_pieces >> -shift);
+
+        for (int i = 0; i < 5; i++) {
+            if (shift > 0)
+                candidates |= (candidates << shift) & opp_pieces & mask;
+            else
+                candidates |= (candidates >> -shift) & opp_pieces & mask;
+        }
+
+        if (shift > 0)
+            valid_moves |= (candidates << shift) & empty & mask;
+        else
+            valid_moves |= (candidates >> -shift) & empty & mask;
+    }
+
+    // --- GENERATE RESULTING STATES ---
+    while (valid_moves) {
+        uint64_t move_bit = valid_moves & -valid_moves;
+        valid_moves ^= move_bit;
+
+        uint64_t new_my = my_pieces;
+        uint64_t new_opp = opp_pieces;
+        uint64_t flipped = 0;
+
+        // Perform flipping logic (from old make_move)
+        for (int dir = 0; dir < 8; dir++) {
+            int shift = shifts[dir];
+            uint64_t pos = move_bit;
+            uint64_t line = 0;
+
+            while (true) {
+                if (shift > 0) pos <<= shift;
+                else pos >>= -shift;
+
+                if (!pos || !(pos & new_opp)) break;
+                line |= pos;
+            }
+
+            if (pos & new_my)
+                flipped |= line;
+        }
+
+        new_my |= move_bit | flipped;
+        new_opp &= ~flipped;
+
+        GameState next;
+        next.x_turn = !state.x_turn;
+
+        if (state.x_turn) {
+            next.x = new_my;
+            next.o = new_opp;
+        } else {
+            next.o = new_my;
+            next.x = new_opp;
+        }
+
+        moves.insert(next);
+    }
+
+    return moves;
+}
+
+
+
 GameState negamax_parallel(Othello* game, int time_limit_ms){
     
-    // Get all possible moves from current board state
-    std::vector<GameState> states = find_all_moves(game->get_board());
-    
-    // Handle edge case
-    if (states.empty()) {
-        return game->get_board();
+    // Get an initial amount of game states for 
+    static std::vector<std::set<GameState, GameStateHash>> states;
+    states.push_back(std::set<GameState, GameStateHash>({game->get_board()}));
+    size_t last_idx = 0;
+    while(states.size() < 500 && !states[last_idx].empty()){
+        states.push_back({});
+        for(auto old_state : states[last_idx]){
+            std::set<GameState, GameStateHash> new_states = serial_find_all_moves(old_state);
+            states[last_idx + 1].insert(new_states.begin(), new_states.end());
+        }
+        last_idx++;
     }
-    // If can't saturate the GPU use serial CPU
-    if (states.size() < 500){
-        return negamax_serial(game, time_limit_ms);
+
+
+    // Get all possible moves from above serial pre-work game states
+    g_time_limit_ms = time_limit_ms;
+    while(!time_exceeded()){
+        // find_all_moves<<blocksPergrid, >>
     }
     
     int n = states.size();
@@ -271,18 +390,6 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
     cudaMemcpy(d_x_turn, h_x_turn, sizeof(uint8_t) * n, cudaMemcpyHostToDevice);
     
     // Launch heuristic kernel on all games found
-    
-    // TODO: Test for a good threads per block (this may be too large)
-    // cudaDeviceProp prop;
-    // cudaGetDeviceProperties(&prop, 0);
-    // int threadsPerBlock = prop.maxThreadsPerBlock;
-
-    int threadsPerBlock = 512;
-
-    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
-
-    heuristic<<<blocksPerGrid, threadsPerBlock>>>(d_x_states, d_o_states, d_x_turn, d_scores, n);
-
     
     // Find max per block
     float* d_blockVals;
