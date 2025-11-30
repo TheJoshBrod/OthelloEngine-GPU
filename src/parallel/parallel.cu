@@ -5,6 +5,7 @@
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <math_constants.h>
+#include <cfloat>
 
 
 
@@ -15,7 +16,7 @@ __global__ void heuristic(const uint64_t* x, const uint64_t* o, const uint8_t* x
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
 
-    for (int i = idx; i < n; i++){
+    for (int i = idx; i < n; i += stride){
         uint64_t my_pieces  = (x_turn[i]) ? x[i] : o[i];
         uint64_t opp_pieces = (x_turn[i]) ? o[i] : x[i];
         uint64_t occupied = x[i] | o[i];
@@ -45,10 +46,10 @@ __global__ void heuristic(const uint64_t* x, const uint64_t* o, const uint8_t* x
 
         // d: positional score
         for (int pos = 0; pos < 64; ++pos){
-            int r = pos / 8, c = pos % 8;
+            int row = pos / 8, col = pos % 8;
             uint64_t bit = (1ULL << pos);
-            if (my_pieces & bit) d += V[r][c];
-            else if (opp_pieces & bit) d -= V[r][c];
+            if (my_pieces & bit) d += V[row][col];
+            else if (opp_pieces & bit) d -= V[row][col];
         }
 
         // frontier tiles: pieces adjacent to an empty square
@@ -88,12 +89,12 @@ __global__ void heuristic(const uint64_t* x, const uint64_t* o, const uint8_t* x
 
         // Corner occupancy
         int my_corners = 0, opp_corners = 0;
-        auto corner = [&](int pos){
-            uint64_t bit = 1ULL << pos;
+        const int corner_pos[4] = {0, 7, 56, 63};
+        for (int k = 0; k < 4; k++) {
+            uint64_t bit = 1ULL << corner_pos[k];
             if (my_pieces & bit) my_corners++;
             else if (opp_pieces & bit) opp_corners++;
-        };
-        corner(0); corner(7); corner(56); corner(63);
+        }
         c = 25.0 * (my_corners - opp_corners);
 
         // Corner closeness
@@ -141,54 +142,43 @@ __global__ void heuristic(const uint64_t* x, const uint64_t* o, const uint8_t* x
         uint8_t my_moves = 0;
         uint8_t opp_moves = 0;
 
-        for (int i = 0; i < 2; i++){
-            if(i != 0){
-                int64_t temp = opp_pieces; 
-                opp_pieces = my_pieces;
-                my_pieces = temp;
-            }
+        // Mobility calculation
+        for (int player = 0; player < 2; player++){
+            uint64_t current_pieces = (player == 0) ? my_pieces : opp_pieces;
+            uint64_t opponent_pieces = (player == 0) ? opp_pieces : my_pieces;
             
-            uint8_t valid_moves = 0;
+            uint64_t valid_moves = 0ULL;
             
-            // For each direction, find pieces that can be flipped
             for (int dir = 0; dir < 8; dir++) {
                 int shift = shifts[dir];
                 uint64_t mask = masks[dir];
                 
-                // Find opponent pieces adjacent to my pieces in this direction
-                uint64_t candidates = opp_pieces & mask;
+                uint64_t candidates = opponent_pieces & mask;
                 if (shift > 0)
-                    candidates &= (my_pieces << shift);
+                    candidates &= (current_pieces << shift);
                 else
-                    candidates &= (my_pieces >> -shift);
+                    candidates &= (current_pieces >> -shift);
                 
-                // Extend along the direction through opponent pieces
-                for (int i = 0; i < 5; i++) {  // Max 6 pieces can be flipped
+                for (int j = 0; j < 5; j++) {
                     if (shift > 0)
-                        candidates |= (candidates << shift) & opp_pieces & mask;
+                        candidates |= (candidates << shift) & opponent_pieces & mask;
                     else
-                        candidates |= (candidates >> -shift) & opp_pieces & mask;
+                        candidates |= (candidates >> -shift) & opponent_pieces & mask;
                 }
                 
-                // Valid moves are empty squares adjacent to the line of opponent pieces
                 if (shift > 0)
                     valid_moves |= (candidates << shift) & empty & mask;
                 else
                     valid_moves |= (candidates >> -shift) & empty & mask;
             }
             
-            // Generate a GameState for each valid move
-            while (valid_moves) {
-                // Get lowest bit and remove it
-                uint64_t move_bit = valid_moves & -valid_moves;
-                valid_moves ^= move_bit;   
-                valid_moves++;
-            }
+            uint8_t move_count = __popcll(valid_moves);
             
-            my_moves = (i == 0) ? valid_moves : my_moves;
-            opp_moves = (i == 0) ? opp_moves : valid_moves ;
+            if (player == 0)
+                my_moves = move_count;
+            else
+                opp_moves = move_count;
         }
-
         if (my_moves + opp_moves > 0){
             if (my_moves > opp_moves) m = (100.0 * my_moves) / (my_moves + opp_moves);
             else if (my_moves < opp_moves) m = -(100.0 * opp_moves) / (my_moves + opp_moves);
@@ -202,8 +192,9 @@ __global__ void heuristic(const uint64_t* x, const uint64_t* o, const uint8_t* x
 
 // Find the maximum value of each block in 1D array
 __global__ void findMaxPerBlock(const float* arr, int size, float* blockVals, int* blockIdxs) {
-    __shared__ float sharedVal[256];
-    __shared__ int sharedIdx[256];
+    extern __shared__ unsigned char sharedMem[];
+    float* sharedVal = reinterpret_cast<float*>(sharedMem);
+    int* sharedIdx = reinterpret_cast<int*>(&sharedVal[blockDim.x]);
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -212,7 +203,7 @@ __global__ void findMaxPerBlock(const float* arr, int size, float* blockVals, in
         sharedVal[threadIdx.x] = arr[idx];
         sharedIdx[threadIdx.x] = idx;
     } else {
-        sharedVal[threadIdx.x] = -CUDART_INF_F;
+        sharedVal[threadIdx.x] = -FLT_MAX;
         sharedIdx[threadIdx.x] = -1;
     }
     __syncthreads();
@@ -280,9 +271,14 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
     cudaMemcpy(d_x_turn, h_x_turn, sizeof(uint8_t) * n, cudaMemcpyHostToDevice);
     
     // Launch heuristic kernel on all games found
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, 0);
-    int threadsPerBlock = prop.maxThreadsPerBlock;
+    
+    // TODO: Test for a good threads per block (this may be too large)
+    // cudaDeviceProp prop;
+    // cudaGetDeviceProperties(&prop, 0);
+    // int threadsPerBlock = prop.maxThreadsPerBlock;
+
+    int threadsPerBlock = 512;
+
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     heuristic<<<blocksPerGrid, threadsPerBlock>>>(d_x_states, d_o_states, d_x_turn, d_scores, n);
@@ -294,7 +290,8 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
     cudaMalloc(&d_blockVals, sizeof(float) * blocksPerGrid);
     cudaMalloc(&d_blockIdxs, sizeof(int) * blocksPerGrid);
     
-    findMaxPerBlock<<<blocksPerGrid, threadsPerBlock>>>(d_scores, n, d_blockVals, d_blockIdxs);
+    size_t sharedMemSize = threadsPerBlock * (sizeof(float) + sizeof(int));
+    findMaxPerBlock<<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_scores, n, d_blockVals, d_blockIdxs);
     
     float* h_blockVals = (float*) malloc(sizeof(float) * blocksPerGrid);
     int* h_blockIdxs = (int*) malloc(sizeof(int) * blocksPerGrid);
