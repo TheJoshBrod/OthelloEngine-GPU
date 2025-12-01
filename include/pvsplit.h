@@ -1,0 +1,13 @@
+#ifndef pvsplit_H
+#define pvsplit_H
+
+#include "gamestate.h"
+
+// Forward declaration
+class Othello;
+
+// Unified parallel negamax entrypoint (time limit in ms)
+// Implemented as a stub that currently delegates to serial code if parallel
+GameState negamax_parallel(Othello* game, int time_limit_ms);
+
+#endif

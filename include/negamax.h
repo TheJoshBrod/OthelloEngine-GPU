@@ -3,6 +3,7 @@
 
 #include "serial.h"
 #include "parallel.h"
+#include "pvsplit.h"
 
 // Unified negamax function pointer. Signature: (Othello*, time_limit_ms)
 extern GameState (*negamax_fn)(Othello* game, int time_limit_ms);

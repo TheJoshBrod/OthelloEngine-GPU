@@ -1,6 +1,7 @@
 #include "negamax.h"
 #include "serial.h"
-#include "parallel.h"
+// #include "parallel.h"
+#include "pvsplit.h"
 
 // Default points to serial implementation
 GameState (*negamax_fn)(Othello* game, int time_limit_ms) = nullptr;
