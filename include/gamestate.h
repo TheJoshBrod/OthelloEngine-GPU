@@ -10,6 +10,7 @@ struct GameState {
     uint64_t o;
     uint64_t x;
     bool x_turn;
+    double score;
     
     // Operators for map/set usage
     bool operator<(const GameState& other) const {
