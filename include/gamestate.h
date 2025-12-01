@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <cstddef>
 
 // Usage:
 // is_tile_X(x=0,y=1) = x && (x*8 + y) 

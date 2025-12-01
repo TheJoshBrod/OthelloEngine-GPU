@@ -509,38 +509,41 @@ int8_t alphabeta_serial(GameState state, int depth, int8_t alpha, int8_t beta, b
 }
 
 // Helper function to find the best move
-int find_best_score_serial(GameState state, int depth, bool is_x) {
+int find_best_score_serial(GameState state, int depth, int alpha_in, int beta_in, bool is_x) {
     std::vector<GameState> moves = find_all_moves(state);
     
     if (moves.empty()) {
-        // No valid moves, return current state (pass)
         GameState pass_state = state;
         pass_state.x_turn = !state.x_turn;
-        return pass_state.score;
+        // Recursive call or score_board needs to happen here depending on rules
+        return score_board_serial(pass_state, is_x);
     }
     
     bool maximizing = (state.x_turn == is_x);
+
+    // Change 2: Initialize best_score to theoretical min/max (NOT alpha/beta)
     int8_t best_score = maximizing ? -128 : 127;
-    GameState best_move = moves[0];
     
-    int8_t alpha = -128;
-    int8_t beta = 127;
+    // Change 3: Initialize working alpha/beta from arguments
+    int8_t alpha = static_cast<int8_t>(alpha_in);
+    int8_t beta = static_cast<int8_t>(beta_in);
     
     for (const GameState& move : moves) {
+        // ... standard alphabeta logic ...
         int8_t score = alphabeta_serial(move, depth - 1, alpha, beta, is_x, !maximizing);
-        
+
         if (maximizing) {
             if (score > best_score) {
                 best_score = score;
-                best_move = move;
             }
             alpha = std::max(alpha, score);
+            if (alpha >= beta) break; 
         } else {
             if (score < best_score) {
                 best_score = score;
-                best_move = move;
             }
             beta = std::min(beta, score);
+            if (beta <= alpha) break;
         }
     }
     return best_score;
@@ -668,7 +671,7 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
     while (!time_exceeded()) {
 
         GameState& pv_move = root_moves_vec[0];
-        int alpha = find_best_score_serial(pv_move, current_depth, is_x);
+        int alpha = find_best_score_serial(pv_move, current_depth, -128, 127, is_x);
         pv_move.score = alpha;
 
         if (root_moves.size() > 1) {
