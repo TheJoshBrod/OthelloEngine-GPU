@@ -4,12 +4,56 @@
 #include "heuristic.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <algorithm>
 #include <numeric>
 #include <chrono>
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <math_constants.h>
 #include <cfloat>
+
+// Get valid moves for a position
+__device__ uint64_t get_valid_moves(uint64_t my_pieces, uint64_t opp_pieces) {
+    uint64_t empty = ~(my_pieces | opp_pieces);
+    uint64_t valid_moves = 0;
+    
+    const int shifts[8] = {8, 9, 1, -7, -8, -9, -1, 7};
+    const uint64_t masks[8] = {
+        0xFFFFFFFFFFFFFF00ULL,
+        0xFEFEFEFEFEFEFE00ULL,
+        0xFEFEFEFEFEFEFEFEULL,
+        0xFEFEFEFEFEFEFE00ULL,
+        0x00FFFFFFFFFFFFFFULL,
+        0x007F7F7F7F7F7F7FULL,
+        0x7F7F7F7F7F7F7F7FULL,
+        0x7F7F7F7F7F7F7F00ULL
+    };
+
+    for (int dir = 0; dir < 8; dir++) {
+        int shift = shifts[dir];
+        uint64_t mask = masks[dir];
+        uint64_t candidates = opp_pieces & mask;
+
+        if (shift > 0)
+            candidates &= (my_pieces << shift);
+        else
+            candidates &= (my_pieces >> -shift);
+
+        for (int i = 0; i < 5; i++) {
+            if (shift > 0)
+                candidates |= (candidates << shift) & opp_pieces & mask;
+            else
+                candidates |= (candidates >> -shift) & opp_pieces & mask;
+        }
+
+        if (shift > 0)
+            valid_moves |= (candidates << shift) & empty & mask;
+        else
+            valid_moves |= (candidates >> -shift) & empty & mask;
+    }
+    
+    return valid_moves;
+}
 
 // Evaluate board state (simple piece count heuristic)
 // -------- CONSTANT POSITIONAL TABLE --------
@@ -120,49 +164,6 @@ __device__ int evaluate_board(uint64_t x, uint64_t o, bool is_x) {
 }
 
 
-
-// Get valid moves for a position
-__device__ uint64_t get_valid_moves(uint64_t my_pieces, uint64_t opp_pieces) {
-    uint64_t empty = ~(my_pieces | opp_pieces);
-    uint64_t valid_moves = 0;
-    
-    const int shifts[8] = {8, 9, 1, -7, -8, -9, -1, 7};
-    const uint64_t masks[8] = {
-        0xFFFFFFFFFFFFFF00ULL,
-        0xFEFEFEFEFEFEFE00ULL,
-        0xFEFEFEFEFEFEFEFEULL,
-        0xFEFEFEFEFEFEFE00ULL,
-        0x00FFFFFFFFFFFFFFULL,
-        0x007F7F7F7F7F7F7FULL,
-        0x7F7F7F7F7F7F7F7FULL,
-        0x7F7F7F7F7F7F7F00ULL
-    };
-
-    for (int dir = 0; dir < 8; dir++) {
-        int shift = shifts[dir];
-        uint64_t mask = masks[dir];
-        uint64_t candidates = opp_pieces & mask;
-
-        if (shift > 0)
-            candidates &= (my_pieces << shift);
-        else
-            candidates &= (my_pieces >> -shift);
-
-        for (int i = 0; i < 5; i++) {
-            if (shift > 0)
-                candidates |= (candidates << shift) & opp_pieces & mask;
-            else
-                candidates |= (candidates >> -shift) & opp_pieces & mask;
-        }
-
-        if (shift > 0)
-            valid_moves |= (candidates << shift) & empty & mask;
-        else
-            valid_moves |= (candidates >> -shift) & empty & mask;
-    }
-    
-    return valid_moves;
-}
 
 // Apply a move and return new board state
 __device__ void apply_move(uint64_t move_bit, uint64_t my_pieces, uint64_t opp_pieces,
