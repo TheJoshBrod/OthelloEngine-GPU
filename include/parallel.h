@@ -1,9 +1,9 @@
 #ifndef PARALLEL_H
 #define PARALLEL_H
 
-#include "serial.h"
+#include "gamestate.h"
 
-// Forward declaration (serial.h defines GameState)
+// Forward declaration
 class Othello;
 
 // Unified parallel negamax entrypoint (time limit in ms)
