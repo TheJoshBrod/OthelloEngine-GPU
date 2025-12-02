@@ -25,7 +25,7 @@ if command -v nvcc >/dev/null 2>&1; then
     echo "nvcc found — building parallel CUDA binary..."
     if nvcc $INCLUDE_DIR -O3 -std=c++11 -arch=sm_70 \
         src/main.cpp src/othello.cpp src/negamax.cpp src/serial/serial.cpp \
-        src/parallel/parallel.cu src/parallel/pvsplit.cu src/heuristic.cpp \
+        src/parallel/parallel.cu src/heuristic.cpp \
         -o $OUT_PARALLEL; then
         echo "Parallel build succeeded: $OUT_PARALLEL"
         PARALLEL_AVAILABLE=1
