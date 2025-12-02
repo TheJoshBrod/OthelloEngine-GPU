@@ -206,6 +206,7 @@ GameState negamax_serial(Othello* game, int time_limit_ms) {
             break; // time ran out during this depth
         }
     }
+    printf("Reach Depth: %d", depth);
 
     return best_state;
 }

@@ -701,6 +701,7 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
             current_depth++;
         }
     }
+    printf("Reach Depth: %d", current_depth);
     
     return root_moves_vec[0];
 }
