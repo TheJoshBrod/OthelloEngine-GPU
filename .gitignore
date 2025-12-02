@@ -1,2 +1,4 @@
 othello
 .vscode/*
+othello_parallel
+othello_serial
