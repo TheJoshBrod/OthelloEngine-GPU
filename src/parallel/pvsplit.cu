@@ -22,8 +22,8 @@
 
 // include your headers
 #include "pvsplit.h"
-#include "GameState.h"
 #include "othello.h"
+#include "gamestate.h"
 #include "heuristic.h"   // provides dynamic_heuristic_evaluation(const GameState&, bool)
 #include "serial.h"      // if you have serial find_all_moves etc; otherwise we use GameState helpers
 
