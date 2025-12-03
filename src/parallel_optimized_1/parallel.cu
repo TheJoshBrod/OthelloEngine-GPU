@@ -12,6 +12,80 @@
 #include <math_constants.h>
 #include <cfloat>
 
+// ADD AFTER LINE 10 (after #include <cfloat>)
+
+// Hash table entry
+struct TTEntry {
+    uint64_t key;  // hash of (x XOR o)
+    int16_t score;
+    int8_t depth;
+    uint8_t flag;  // 0=invalid, 1=exact, 2=lower_bound, 3=upper_bound
+};
+
+// Global transposition table
+__device__ TTEntry* g_tt;
+__device__ int g_tt_size;
+
+// Simple hash function
+__device__ uint64_t hash_position(uint64_t x, uint64_t o) {
+    return (x ^ o) * 0x9e3779b97f4a7c15ULL;
+}
+
+// Probe transposition table
+__device__ bool tt_probe(uint64_t x, uint64_t o, int depth, 
+                         int alpha, int beta, int* score) {
+    uint64_t hash = hash_position(x, o);
+    int idx = hash % g_tt_size;
+    
+    for (int i = 0; i < 4; i++) {
+        int slot = (idx + i) % g_tt_size;
+        TTEntry entry = g_tt[slot];
+        
+        if (entry.flag == 0) return false;
+        
+        if (entry.key == hash && entry.depth >= depth) {
+            if (entry.flag == 1) {
+                *score = entry.score;
+                return true;
+            }
+            if (entry.flag == 2 && entry.score > alpha) {
+                alpha = entry.score;
+                if (alpha >= beta) {
+                    *score = entry.score;
+                    return true;
+                }
+            }
+            if (entry.flag == 3 && entry.score < beta) {
+                beta = entry.score;
+                if (alpha >= beta) {
+                    *score = entry.score;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Store in transposition table
+__device__ void tt_store(uint64_t x, uint64_t o, int depth, int score, uint8_t flag) {
+    uint64_t hash = hash_position(x, o);
+    int idx = hash % g_tt_size;
+    
+    for (int i = 0; i < 4; i++) {
+        int slot = (idx + i) % g_tt_size;
+        TTEntry* entry = &g_tt[slot];
+        
+        if (entry->flag == 0 || entry->depth <= depth) {
+            entry->key = hash;
+            entry->score = (int16_t)score;
+            entry->depth = (int8_t)depth;
+            entry->flag = flag;
+            break;
+        }
+    }
+}
+
 // Get valid moves for a position
 __device__ uint64_t get_valid_moves(uint64_t my_pieces, uint64_t opp_pieces) {
     uint64_t empty = ~(my_pieces | opp_pieces);
@@ -198,8 +272,16 @@ __device__ void apply_move(uint64_t move_bit, uint64_t my_pieces, uint64_t opp_p
 // Recursive alpha-beta search
 __device__ int alphabeta(uint64_t x_pieces, uint64_t o_pieces, bool x_turn,
                         int depth, int alpha, int beta, bool maximizing) {
+    // PROBE TT FIRST - ADD THIS
+    int tt_score;
+    if (tt_probe(x_pieces, o_pieces, depth, alpha, beta, &tt_score)) {
+        return tt_score;
+    }
+    
     if (depth == 0) {
-        return evaluate_board(x_pieces, o_pieces, true);
+        int score = evaluate_board(x_pieces, o_pieces, true);
+        tt_store(x_pieces, o_pieces, depth, score, 1);  // ADD THIS
+        return score;
     }
     
     uint64_t my_pieces = x_turn ? x_pieces : o_pieces;
@@ -211,14 +293,19 @@ __device__ int alphabeta(uint64_t x_pieces, uint64_t o_pieces, bool x_turn,
         uint64_t opp_valid = get_valid_moves(opp_pieces, my_pieces);
         if (!opp_valid) {
             // Game over - return final score
-            return evaluate_board(x_pieces, o_pieces, true);
+            int score = evaluate_board(x_pieces, o_pieces, true);
+            tt_store(x_pieces, o_pieces, depth, score, 1);  // ADD THIS
+            return score;
         }
         // Pass turn
         return alphabeta(x_pieces, o_pieces, !x_turn, depth - 1, alpha, beta, !maximizing);
     }
     
+    int original_alpha = alpha;  // ADD THIS
+    int best_score;              // ADD THIS
+    
     if (maximizing) {
-        int max_eval = -10000;
+        best_score = -10000;  // CHANGE: was max_eval
         while (valid_moves) {
             uint64_t move = valid_moves & -valid_moves;
             valid_moves ^= move;
@@ -230,15 +317,15 @@ __device__ int alphabeta(uint64_t x_pieces, uint64_t o_pieces, bool x_turn,
             uint64_t new_o = x_turn ? new_opp : new_my;
             
             int eval = alphabeta(new_x, new_o, !x_turn, depth - 1, alpha, beta, false);
-            max_eval = max(max_eval, eval);
+            best_score = max(best_score, eval);  // CHANGE: was max_eval
             alpha = max(alpha, eval);
             
             if (beta <= alpha)
                 break; // Beta cutoff
         }
-        return max_eval;
+        // REMOVE THE OLD 'return max_eval;' LINE
     } else {
-        int min_eval = 10000;
+        best_score = 10000;  // CHANGE: was min_eval
         while (valid_moves) {
             uint64_t move = valid_moves & -valid_moves;
             valid_moves ^= move;
@@ -250,14 +337,28 @@ __device__ int alphabeta(uint64_t x_pieces, uint64_t o_pieces, bool x_turn,
             uint64_t new_o = x_turn ? new_opp : new_my;
             
             int eval = alphabeta(new_x, new_o, !x_turn, depth - 1, alpha, beta, true);
-            min_eval = min(min_eval, eval);
+            best_score = min(best_score, eval);  // CHANGE: was min_eval
             beta = min(beta, eval);
             
             if (beta <= alpha)
                 break; // Alpha cutoff
         }
-        return min_eval;
+        // REMOVE THE OLD 'return min_eval;' LINE
     }
+    
+    // ADD THIS ENTIRE SECTION AT THE END
+    // Store in TT with appropriate flag
+    uint8_t flag;
+    if (best_score <= original_alpha) {
+        flag = 3;  // Upper bound
+    } else if (best_score >= beta) {
+        flag = 2;  // Lower bound
+    } else {
+        flag = 1;  // Exact
+    }
+    tt_store(x_pieces, o_pieces, depth, best_score, flag);
+    
+    return best_score;
 }
 
 // Kernel: Each thread evaluates one root move
@@ -564,6 +665,10 @@ private:
     int *d_scores;
     uint64_t *d_moves;
     int *d_num_moves;
+    
+    // ADD THIS: For transposition table
+    TTEntry* d_tt;
+    int tt_size;
 
     int capacity;
     int max_output_capacity;
@@ -585,6 +690,13 @@ public:
         
         cudaMalloc(&d_moves, 64 * sizeof(uint64_t));
         cudaMalloc(&d_num_moves, sizeof(int));
+        
+        // ADD THIS: Initialize transposition table
+        tt_size = 16 * 1024 * 1024;  // 16M entries (~384MB)
+        cudaMalloc(&d_tt, tt_size * sizeof(TTEntry));
+        cudaMemset(d_tt, 0, tt_size * sizeof(TTEntry));
+        cudaMemcpyToSymbol(g_tt, &d_tt, sizeof(TTEntry*));
+        cudaMemcpyToSymbol(g_tt_size, &tt_size, sizeof(int));
     }
 
     ~GPUBatchProcessor() {
@@ -599,42 +711,52 @@ public:
         cudaFree(d_out_count);
         cudaFree(d_moves);
         cudaFree(d_num_moves);
+        cudaFree(d_tt);  // ADD THIS
+    }
+    
+    // ADD THIS METHOD: Clear TT between searches (optional but recommended)
+    void clear_tt() {
+        cudaMemset(d_tt, 0, tt_size * sizeof(TTEntry));
     }
 
     // Evaluate multiple states with alpha-beta
     std::vector<int> batch_alphabeta(const std::vector<GameState>& states, int depth, int alpha, int beta) {
-        int num_states = states.size();
+        // ADD THIS: Clear TT at start of each search
+        clear_tt();
         
-        std::vector<uint64_t> h_x(num_states);
-        std::vector<uint64_t> h_o(num_states);
-        std::vector<uint8_t> h_turns(num_states);
-        
-        for (int i = 0; i < num_states; i++) {
-            h_x[i] = states[i].x;
-            h_o[i] = states[i].o;
-            h_turns[i] = states[i].x_turn;
+        std::vector<GameState> current_states = states;
+        for (int relative_depth = 0; relative_depth < depth && !time_exceeded; relative_depth++) {
+            // Remove duplicates BEFORE processing
+            std::unordered_set<GameState, GameStateHash> unique_set(current_states.begin(), current_states.end());
+            current_states.assign(unique_set.begin(), unique_set.end());
+            
+            int num_states = current_states.size();
+            
+            // Prepare data
+            std::vector<uint64_t> h_x(num_states), h_o(num_states);
+            std::vector<uint8_t> h_turns(num_states);
+            for (int i = 0; i < num_states; i++) {
+                h_x[i] = current_states[i].x;
+                h_o[i] = current_states[i].o;
+                h_turns[i] = current_states[i].x_turn;
+            }
+            
+            // Copy to device
+            cudaMemcpy(d_x, h_x.data(), num_states * sizeof(uint64_t), cudaMemcpyHostToDevice);
+            cudaMemcpy(d_o, h_o.data(), num_states * sizeof(uint64_t), cudaMemcpyHostToDevice);
+            cudaMemcpy(d_turns, h_turns.data(), num_states * sizeof(uint8_t), cudaMemcpyHostToDevice);
+            
+            // Process on GPU
+            int blockSize = 256;
+            int gridSize = (num_states + blockSize - 1) / blockSize;
+            batch_alphabeta_kernel<<<gridSize, blockSize>>>(
+                d_x, d_o, d_turns, num_states, depth - relative_depth, alpha, beta, d_scores
+            );    
         }
-
-        cudaMemcpy(d_x, h_x.data(), num_states * sizeof(uint64_t), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_o, h_o.data(), num_states * sizeof(uint64_t), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_turns, h_turns.data(), num_states * sizeof(uint8_t), cudaMemcpyHostToDevice);
-
-        int blockSize = 256;
-        int gridSize = (num_states + blockSize - 1) / blockSize;
-        cudaDeviceSetLimit(cudaLimitStackSize, 16384);
-        batch_alphabeta_kernel<<<gridSize, blockSize>>>(
-            d_x, d_o, d_turns,
-            num_states,
-            depth,
-            alpha,
-            beta,
-            d_scores
-        );
-        
         cudaDeviceSynchronize();
 
-        std::vector<int> scores(num_states);
-        cudaMemcpy(scores.data(), d_scores, num_states * sizeof(int), cudaMemcpyDeviceToHost);
+        std::vector<int> scores(current_states.size());  // FIX: was num_states (out of scope)
+        cudaMemcpy(scores.data(), d_scores, current_states.size() * sizeof(int), cudaMemcpyDeviceToHost);
         
         return scores;
     }  
@@ -649,6 +771,7 @@ void initial_sort(std::vector<GameState>& states, bool is_x){
         return a.score > b.score;
     });
 }
+
 
 GameState negamax_parallel(Othello* game, int time_limit_ms){
     // Calculates next best move based on current game state in parallel
