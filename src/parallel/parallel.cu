@@ -665,7 +665,7 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
     std::vector<GameState> root_moves_vec(root_moves.begin(), root_moves.end());
     initial_sort(root_moves_vec, game->getCurrentPlayer() == 'x');
 
-    int current_depth = 1;
+    int current_depth = 3;
     g_time_limit_ms = time_limit_ms;
     g_start_time = std::chrono::steady_clock::now();
 
