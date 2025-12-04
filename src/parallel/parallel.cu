@@ -332,8 +332,7 @@ __global__ void batch_alphabeta_kernel(
     bool x_turn = turns[idx];
     
     // Run alpha-beta search using your existing function
-    const int NEG_INF = -10000;
-    const int POS_INF = 10000;
+    // Run alpha-beta search using your existing function
     
     // x_turn determines if we're maximizing or minimizing
     // If it's X's turn and we're evaluating for X, we're maximizing
@@ -657,7 +656,6 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
     // - Reduction (Shrink list of future states using children's score to return best next move)
 
     int MAX_GPU_CAPACITY = 1e6;
-    int MIN_GPU_CAPACITY = 500;
 
     bool is_x = game->getCurrentPlayer() == 'x';
 
@@ -679,14 +677,13 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
             std::vector<GameState> others(root_moves_vec.begin() + 1, root_moves_vec.end());
             
             GPUBatchProcessor gpu(MAX_GPU_CAPACITY);
-            std::vector<int> results = gpu.batch_alphabeta(others, current_depth, alpha, +INFINITY);
+            std::vector<int> results = gpu.batch_alphabeta(others, current_depth, alpha, 10000);
 
             // Gather Results & Re-Sort
-            bool new_best_found = false;
             for(size_t i = 0; i < results.size(); i++) {
                 root_moves_vec[i + 1].score = results[i];
                 if (results[i] > alpha) {
-                    new_best_found = true;
+                    // new_best_found = true;
                 }
             }
 

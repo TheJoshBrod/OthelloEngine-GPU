@@ -58,7 +58,7 @@ fi
 PARALLEL_AVAILABLE=0
 if command -v nvcc >/dev/null 2>&1; then
     echo "Building parallel CUDA binary..."
-    if nvcc $INCLUDE_DIR -O3 -std=c++11 -arch=sm_70 \
+    if nvcc $INCLUDE_DIR -O3 -std=c++17 -arch=sm_70 -Xptxas -w \
         src/main.cpp src/othello.cpp src/negamax.cpp src/serial/serial.cpp \
         src/parallel/parallel.cu src/heuristic.cpp \
         -o $OUT_PARALLEL; then
@@ -75,7 +75,7 @@ fi
 O1_AVAILABLE=0
 if command -v nvcc >/dev/null 2>&1; then
     echo "Building optimized CUDA binary (o1)..."
-    if nvcc $INCLUDE_DIR -O3 -std=c++11 -arch=sm_70 \
+    if nvcc $INCLUDE_DIR -O3 -std=c++17 -arch=sm_70 -Xptxas -w \
         src/main.cpp src/othello.cpp src/negamax.cpp src/serial/serial.cpp \
         src/parallel_optimized_1/parallel.cu src/heuristic.cpp \
         -o $OUT_O1; then
