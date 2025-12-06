@@ -142,6 +142,8 @@ __constant__ int V[64] = {
     20,-3,11,8,8,11,-3,20
 };
 
+namespace {
+
 // File masks for frontier detection
 __device__ constexpr uint64_t FILE_A = 0x0101010101010101ULL;
 __device__ constexpr uint64_t FILE_H = 0x8080808080808080ULL;
@@ -829,6 +831,8 @@ GameState negamax_opt1_impl(Othello* game, int time_limit_ms){
 
     return root_moves_vec[0];
 }
+
+} // anonymous namespace
 
 // Expose a C wrapper and getter for benchmark harness
 extern "C" GameState negamax_parallel_opt1_cuda(Othello* game, int time_limit_ms){
