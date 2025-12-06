@@ -772,7 +772,9 @@ void initial_sort(std::vector<GameState>& states, bool is_x){
 }
 
 
-GameState negamax_parallel(Othello* game, int time_limit_ms){
+// Rename internal optimized implementation to avoid symbol collision
+static int g_last_reached_depth_opt1 = 0;
+GameState negamax_opt1_impl(Othello* game, int time_limit_ms){
     // Calculates next best move based on current game state in parallel
     // Two phases:
     // - Expansion (Generate tree of future states and estimate "potential" given a heuristic)
@@ -821,7 +823,16 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
             current_depth++;
         }
     }
+    // record reached depth
+    g_last_reached_depth_opt1 = current_depth;
     printf("Reach Depth: %d", current_depth);
-    
+
     return root_moves_vec[0];
 }
+
+// Expose a C wrapper and getter for benchmark harness
+extern "C" GameState negamax_parallel_opt1_cuda(Othello* game, int time_limit_ms){
+    return negamax_opt1_impl(game, time_limit_ms);
+}
+
+extern "C" int get_last_depth_opt1(){ return g_last_reached_depth_opt1; }

@@ -221,7 +221,9 @@ void Othello::computer_turn(){
 void Othello::play() {
     cout << "=== OTHELLO GAME ===\n";
     while (true) {
-        auto [xScore, oScore] = getScore();
+        auto sc = getScore();
+        int xScore = sc.first;
+        int oScore = sc.second;
         cout << "\nScore - X: " << xScore << " | O: " << oScore << "\n";
 
         if (!hasValidMoves('X') && !hasValidMoves('O')) {

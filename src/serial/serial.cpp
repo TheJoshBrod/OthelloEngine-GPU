@@ -135,6 +135,10 @@ static bool time_exceeded() {
     return elapsed >= g_time_limit_ms;
 }
 
+// Exported last-depth for benchmarking
+static int g_last_reached_depth_serial = 0;
+extern "C" int get_last_depth_serial() { return g_last_reached_depth_serial; }
+
 // Depth-limited negamax with alpha-beta. Returns score from perspective of 'is_x'.
 int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_x) {
     if (time_exceeded()) return 0;
@@ -206,6 +210,8 @@ GameState negamax_serial(Othello* game, int time_limit_ms) {
             break; // time ran out during this depth
         }
     }
+    // record reached depth for benchmarking
+    g_last_reached_depth_serial = depth;
     printf("Reach Depth: %d", depth);
 
     return best_state;

@@ -352,6 +352,10 @@ static bool time_exceeded() {
     return elapsed >= g_time_limit_ms;
 }
 
+// Benchmarking: last reached depth for this implementation
+static int g_last_reached_depth_parallel = 0;
+extern "C" int get_last_depth_parallel(){ return g_last_reached_depth_parallel; }
+
 std::unordered_set<GameState, GameStateHash> serial_find_all_moves(GameState state) {
     std::unordered_set<GameState, GameStateHash> moves;
     
@@ -698,7 +702,14 @@ GameState negamax_parallel(Othello* game, int time_limit_ms){
             current_depth++;
         }
     }
+    // record reached depth for benchmarking
+    g_last_reached_depth_parallel = current_depth;
     printf("Reach Depth: %d", current_depth);
-    
+
     return root_moves_vec[0];
+}
+
+// Expose a C wrapper for this implementation so benchmark harness can call it directly
+extern "C" GameState negamax_parallel_base_cuda(Othello* game, int time_limit_ms){
+    return negamax_parallel(game, time_limit_ms);
 }
