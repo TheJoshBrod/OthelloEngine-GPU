@@ -137,7 +137,7 @@ static bool time_exceeded() {
 
 // Exported last-depth for benchmarking
 static int g_last_reached_depth_serial = 0;
-extern "C" int get_last_depth_serial() { return g_last_reached_depth_serial; }
+int get_last_depth_serial() { return g_last_reached_depth_serial; }
 
 // Depth-limited negamax with alpha-beta. Returns score from perspective of 'is_x'.
 int negamax_dfs(const GameState& state, int depth, int alpha, int beta, bool is_x) {

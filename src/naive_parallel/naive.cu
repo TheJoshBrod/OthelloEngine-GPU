@@ -586,11 +586,11 @@ GameState negamax_naive_impl(Othello* game, int time_limit_ms){
     return result;
 }
 
-// Expose a C wrapper and depth getter for benchmarking harness
-extern "C" GameState negamax_naive_cuda(Othello* game, int time_limit_ms){
+// Expose a wrapper and depth getter for benchmarking harness
+GameState negamax_naive_cuda(Othello* game, int time_limit_ms){
     GameState res = negamax_naive_impl(game, time_limit_ms);
     return res;
 }
 
-extern "C" int get_last_depth_naive(){ return g_last_reached_depth_naive; }
+int get_last_depth_naive(){ return g_last_reached_depth_naive; }
   

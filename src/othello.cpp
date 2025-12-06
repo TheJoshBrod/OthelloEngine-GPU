@@ -2,7 +2,7 @@
 #include <iostream>
 #include <limits>
 #include <vector>
-#include "negamax.h"
+#include "bench_impls.h"
 
 using namespace std;
 
@@ -207,9 +207,35 @@ void Othello::computer_turn(){
             flipPieces(moves[0].first, moves[0].second, currentPlayer);
     }
     else{
-        // Use the unified negamax entrypoint (serial or parallel) with the configured time limit
-        extern GameState (*negamax_fn)(Othello*, int);
-        GameState new_board = negamax_fn(this, time_limit_ms);
+        // Dispatch directly to the selected implementation (serial/naive/parallel)
+        GameState new_board;
+        switch (computer_mode) {
+            case best_move_serial:
+                new_board = negamax_serial(this, time_limit_ms);
+                break;
+            case naive_cuda:
+                new_board = negamax_naive_cuda(this, time_limit_ms);
+                break;
+            case parallel_base:
+                new_board = negamax_parallel_base_cuda(this, time_limit_ms);
+                break;
+            case parallel_opt1:
+                new_board = negamax_parallel_opt1_cuda(this, time_limit_ms);
+                break;
+            case first_move:
+            default:
+                // fall back to a simple first-move behavior
+                {
+                    vector<pair<int,int>> moves = retrieveValidMoves(currentPlayer);
+                    if (!moves.empty()) {
+                        flipPieces(moves[0].first, moves[0].second, currentPlayer);
+                        return;
+                    }
+                    // if no moves, keep board unchanged
+                    new_board = get_board();
+                }
+        }
+
         o = new_board.o;
         x = new_board.x;
     }

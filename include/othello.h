@@ -10,7 +10,10 @@
 
 enum ai_type{
     first_move,
-    best_move_serial
+    best_move_serial,
+    naive_cuda,
+    parallel_base,
+    parallel_opt1
 };
 
 

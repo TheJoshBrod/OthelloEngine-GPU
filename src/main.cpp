@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include <limits>
-#include "negamax.h"
+// negamax.h removed; choose implementation via ai_type passed to Othello
 
 using namespace std;
 
@@ -25,8 +25,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Set negamax implementation
-    set_negamax_mode(use_parallel);
+    // Determine AI implementation from flags
+    ai_type selected_ai = best_move_serial;
+    if (use_parallel) selected_ai = parallel_base;
+    // (optional) support additional flags for other implementations
 
     // Ask user for role
     cout << "Choose mode:\n";
@@ -46,7 +48,7 @@ int main(int argc, char* argv[]) {
     else if (choice == 2) { num_players = 1; human_side = 'O'; }
     else { num_players = 0; }
 
-    Othello game(num_players, best_move_serial, human_side, time_limit_ms);
+    Othello game(num_players, selected_ai, human_side, time_limit_ms);
     game.play();
     return 0;
 }

@@ -87,7 +87,7 @@ __device__ void tt_store(uint64_t x, uint64_t o, int depth, int score, uint8_t f
 }
 
 // Get valid moves for a position
-__device__ uint64_t get_valid_moves(uint64_t my_pieces, uint64_t opp_pieces) {
+static __device__ uint64_t get_valid_moves(uint64_t my_pieces, uint64_t opp_pieces) {
     uint64_t empty = ~(my_pieces | opp_pieces);
     uint64_t valid_moves = 0;
     
@@ -834,9 +834,9 @@ GameState negamax_opt1_impl(Othello* game, int time_limit_ms){
 
 } // anonymous namespace
 
-// Expose a C wrapper and getter for benchmark harness
-extern "C" GameState negamax_parallel_opt1_cuda(Othello* game, int time_limit_ms){
+// Expose a wrapper and getter for benchmark harness
+GameState negamax_parallel_opt1_cuda(Othello* game, int time_limit_ms){
     return negamax_opt1_impl(game, time_limit_ms);
 }
 
-extern "C" int get_last_depth_opt1(){ return g_last_reached_depth_opt1; }
+int get_last_depth_opt1(){ return g_last_reached_depth_opt1; }
