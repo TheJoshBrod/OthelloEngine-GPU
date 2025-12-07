@@ -62,7 +62,7 @@ vector<GameState> find_all_moves(GameState state) {
         0xFFFFFFFFFFFFFF00ULL,
         0xFEFEFEFEFEFEFE00ULL,
         0xFEFEFEFEFEFEFEFEULL,
-        0xFEFEFEFEFEFEFE00ULL,
+        0x00FEFEFEFEFEFEFEULL,
         0x00FFFFFFFFFFFFFFULL,
         0x007F7F7F7F7F7F7FULL,
         0x7F7F7F7F7F7F7F7FULL,
@@ -211,8 +211,7 @@ GameState negamax_serial(Othello* game, int time_limit_ms) {
         }
     }
     // record reached depth for benchmarking
-    g_last_reached_depth_serial = depth;
-    printf("Reach Depth: %d", depth);
+    g_last_reached_depth_serial = depth - 1;
 
     return best_state;
 }

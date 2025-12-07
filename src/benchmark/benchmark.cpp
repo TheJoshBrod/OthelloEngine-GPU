@@ -87,7 +87,7 @@ map<string, PhaseStats> play_one_game(Impl impl, int time_limit_ms){
 
 int main(int argc, char** argv){
     vector<int> times_sec = {5,10,20,30};
-    int games_per_config = 5;
+    int games_per_config = 2;
     if (argc > 1) games_per_config = stoi(argv[1]);
 
     vector<pair<Impl,string>> impls = {

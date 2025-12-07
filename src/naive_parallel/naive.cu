@@ -45,7 +45,7 @@ __device__ inline uint64_t shiftS(uint64_t b){ return (b << 8); }
 __device__ inline uint64_t shiftW(uint64_t b){ return (b >> 1) & 0x7f7f7f7f7f7f7f7fULL; }
 __device__ inline uint64_t shiftE(uint64_t b){ return (b << 1) & 0xfefefefefefefefeULL; }
 __device__ inline uint64_t shiftNE(uint64_t b){ return (b >> 7) & 0x7f7f7f7f7f7f7f7fULL; }
-__device__ inline uint64_t shiftNW(uint64_t b){ return (b >> 9) & 0x3f3f3f3f3f3f3f3fULL; }
+__device__ inline uint64_t shiftNW(uint64_t b){ return (b >> 9) & 0x7f7f7f7f7f7f7f7fULL; }
 __device__ inline uint64_t shiftSE(uint64_t b){ return (b << 9) & 0xfefefefefefefefeULL; }
 __device__ inline uint64_t shiftSW(uint64_t b){ return (b << 7) & 0x7f7f7f7f7f7f7f7fULL; }
 
@@ -317,7 +317,7 @@ static uint64_t host_shiftS(uint64_t b){ return (b << 8); }
 static uint64_t host_shiftW(uint64_t b){ return (b >> 1) & 0x7f7f7f7f7f7f7fULL; }
 static uint64_t host_shiftE(uint64_t b){ return (b << 1) & 0xfefefefefefefefeULL; }
 static uint64_t host_shiftNE(uint64_t b){ return (b >> 7) & 0x7f7f7f7f7f7f7f7fULL; }
-static uint64_t host_shiftNW(uint64_t b){ return (b >> 9) & 0x3f3f3f3f3f3f3f3fULL; }
+static uint64_t host_shiftNW(uint64_t b){ return (b >> 9) & 0x7f7f7f7f7f7f7f7fULL; }
 static uint64_t host_shiftSE(uint64_t b){ return (b << 9) & 0xfefefefefefefefeULL; }
 static uint64_t host_shiftSW(uint64_t b){ return (b << 7) & 0x7f7f7f7f7f7f7f7fULL; }
 
@@ -581,7 +581,7 @@ GameState negamax_naive_impl(Othello* game, int time_limit_ms){
     // Attempt to estimate: iterate to find last depth by simulating which saved best_score was from
     // Simpler: use remainingDepth as last measured: (best_score was updated at increasing depths)
     // This is approximate but provides consistency across implementations.
-    g_last_reached_depth_naive = 0; // caller can use this as heuristic
+    // g_last_reached_depth_naive = 0; // Removed override
 
     return result;
 }

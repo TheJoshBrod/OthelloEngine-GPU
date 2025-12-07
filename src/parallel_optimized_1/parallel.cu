@@ -96,7 +96,7 @@ static __device__ uint64_t get_valid_moves(uint64_t my_pieces, uint64_t opp_piec
         0xFFFFFFFFFFFFFF00ULL,
         0xFEFEFEFEFEFEFE00ULL,
         0xFEFEFEFEFEFEFEFEULL,
-        0xFEFEFEFEFEFEFE00ULL,
+        0x00FEFEFEFEFEFEFEULL,
         0x00FFFFFFFFFFFFFFULL,
         0x007F7F7F7F7F7F7FULL,
         0x7F7F7F7F7F7F7F7FULL,
@@ -826,8 +826,7 @@ GameState negamax_opt1_impl(Othello* game, int time_limit_ms){
         }
     }
     // record reached depth
-    g_last_reached_depth_opt1 = current_depth;
-    printf("Reach Depth: %d", current_depth);
+    g_last_reached_depth_opt1 = current_depth - 1;
 
     return root_moves_vec[0];
 }
