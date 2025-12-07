@@ -213,14 +213,24 @@ void Othello::computer_turn(){
             case best_move_serial:
                 new_board = negamax_serial(this, time_limit_ms);
                 break;
+#ifdef ENABLE_NAIVE
             case naive_cuda:
                 new_board = negamax_naive_cuda(this, time_limit_ms);
                 break;
+#endif
             case parallel_base:
+#ifdef ENABLE_PARALLEL_BASE
                 new_board = negamax_parallel_base_cuda(this, time_limit_ms);
+#elif defined(ENABLE_PARALLEL_OPT1)
+                // Fallback: if we are in the optimized binary but requested "parallel" (base),
+                // map it to the optimized version so --parallel works meaningfully.
+                new_board = negamax_parallel_opt1_cuda(this, time_limit_ms);
+#endif
                 break;
             case parallel_opt1:
+#ifdef ENABLE_PARALLEL_OPT1
                 new_board = negamax_parallel_opt1_cuda(this, time_limit_ms);
+#endif
                 break;
             case first_move:
             default:

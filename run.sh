@@ -4,7 +4,7 @@
 set -e
 
 INCLUDE_DIR="-I include"
-TIME_MS=5000
+TIME_MS=15000
 
 # Names for the three builds
 OUT_SERIAL=othello_serial
@@ -46,8 +46,8 @@ echo ""
 # Build serial binary
 echo "Building serial binary with g++..."
 if g++ $INCLUDE_DIR -std=c++17 -O2 -o $OUT_SERIAL \
-    src/main.cpp src/othello.cpp src/negamax.cpp src/serial/serial.cpp \
-    src/heuristic.cpp src/parallel/parallel_stub.cpp; then
+    src/main.cpp src/othello.cpp src/serial/serial.cpp \
+    src/heuristic.cpp; then
     echo "✓ Serial build succeeded: $OUT_SERIAL"
 else
     echo "✗ Serial build failed." >&2
@@ -58,9 +58,9 @@ fi
 PARALLEL_AVAILABLE=0
 if command -v nvcc >/dev/null 2>&1; then
     echo "Building parallel CUDA binary..."
-    if nvcc $INCLUDE_DIR -O3 -std=c++17 -arch=sm_70 -Xptxas -w \
-        src/main.cpp src/othello.cpp src/negamax.cpp src/serial/serial.cpp \
-        src/parallel/parallel.cu src/heuristic.cpp \
+    if nvcc $INCLUDE_DIR -O3 -std=c++17 -arch=sm_70 -Xptxas -w -DENABLE_CUDA -DENABLE_PARALLEL_BASE -DENABLE_NAIVE \
+        src/main.cpp src/othello.cpp src/serial/serial.cpp \
+        src/parallel/parallel.cu src/naive_parallel/naive.cu src/heuristic.cpp \
         -o $OUT_PARALLEL; then
         echo "✓ Parallel build succeeded: $OUT_PARALLEL"
         PARALLEL_AVAILABLE=1
@@ -75,9 +75,9 @@ fi
 O1_AVAILABLE=0
 if command -v nvcc >/dev/null 2>&1; then
     echo "Building optimized CUDA binary (o1)..."
-    if nvcc $INCLUDE_DIR -O3 -std=c++17 -arch=sm_70 -Xptxas -w \
-        src/main.cpp src/othello.cpp src/negamax.cpp src/serial/serial.cpp \
-        src/parallel_optimized_1/parallel.cu src/heuristic.cpp \
+    if nvcc $INCLUDE_DIR -O3 -std=c++17 -arch=sm_70 -Xptxas -w -DENABLE_CUDA -DENABLE_PARALLEL_OPT1 -DENABLE_NAIVE \
+        src/main.cpp src/othello.cpp src/serial/serial.cpp \
+        src/parallel_optimized_1/parallel.cu src/naive_parallel/naive.cu src/heuristic.cpp \
         -o $OUT_O1; then
         echo "✓ Optimized build succeeded: $OUT_O1"
         O1_AVAILABLE=1

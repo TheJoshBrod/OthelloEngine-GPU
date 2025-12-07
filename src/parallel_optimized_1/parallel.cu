@@ -827,7 +827,7 @@ GameState negamax_opt1_impl(Othello* game, int time_limit_ms){
     }
     // record reached depth
     g_last_reached_depth_opt1 = current_depth - 1;
-
+    printf("Opt1 reached depth: %d with %zu root moves\n", g_last_reached_depth_opt1, root_moves_vec.size());
     return root_moves_vec[0];
 }
 
