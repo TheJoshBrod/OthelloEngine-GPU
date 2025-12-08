@@ -45,7 +45,7 @@ echo ""
 
 # Build serial binary
 echo "Building serial binary with g++..."
-if g++ $INCLUDE_DIR -std=c++17 -O2 -o $OUT_SERIAL \
+if g++ $INCLUDE_DIR -std=c++17 -O3 -o $OUT_SERIAL \
     src/main.cpp src/othello.cpp src/serial/serial.cpp \
     src/heuristic.cpp; then
     echo "✓ Serial build succeeded: $OUT_SERIAL"
